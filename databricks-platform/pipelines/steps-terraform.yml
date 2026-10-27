@@ -1,0 +1,42 @@
+# 被 azure-pipelines.yml 的每个环境调用。
+# AzureCLI@2 会注入 ARM_*，Databricks provider 和 azurerm backend 都用这组身份。
+parameters:
+  - name: env
+    type: string
+  - name: serviceConnection
+    type: string
+  - name: action
+    type: string
+    default: apply
+
+steps:
+  - checkout: self
+
+  - bash: |
+      set -euo pipefail
+      VERSION="$(tfVersion)"
+      curl -fsSL "https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_amd64.zip" -o /tmp/terraform.zip
+      unzip -o /tmp/terraform.zip -d /tmp/terraform-bin
+      sudo mv /tmp/terraform-bin/terraform /usr/local/bin/terraform
+      terraform version
+    displayName: Install Terraform $(tfVersion)
+
+  - task: AzureCLI@2
+    displayName: Terraform ${{ parameters.action }} (${{ parameters.env }})
+    inputs:
+      azureSubscription: ${{ parameters.serviceConnection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      addSpnToEnvironment: true
+      workingDirectory: databricks-platform/live
+      inlineScript: |
+        set -euo pipefail
+        ENV="${{ parameters.env }}"
+        ACTION="${{ parameters.action }}"
+
+        terraform init -input=false -backend-config="envs/${ENV}.backend.hcl"
+        terraform plan -input=false -var-file="envs/${ENV}.tfvars" -out="tfplan-${ENV}"
+
+        if [ "$ACTION" = "apply" ]; then
+          terraform apply -input=false -auto-approve "tfplan-${ENV}"
+        fi

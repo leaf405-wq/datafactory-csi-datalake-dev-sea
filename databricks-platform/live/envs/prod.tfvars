@@ -1,0 +1,26 @@
+environment     = "prod"
+domain          = "sales"
+force_destroy   = false
+schedule_status = "UNPAUSED"
+
+workspace_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-dbw-prod/providers/Microsoft.Databricks/workspaces/dbw-prod"
+
+storage_root = ""
+
+engineer_group            = "sales-engineers-prod"
+analyst_group             = "sales-analysts-prod"
+job_runner_application_id = "00000000-0000-0000-0000-000000000000"
+warehouse_id              = ""
+
+git_url      = "https://github.com/your-org/agent_go_v1"
+git_provider = "gitHub"
+git_branch   = "main"
+
+schedule_cron     = "0 0 6 * * ?"
+schedule_timezone = "Asia/Shanghai"
+
+spark_version      = "15.4.x-scala2.12"
+node_type_id       = "Standard_D4ds_v5"
+num_workers        = 2
+azure_availability = "ON_DEMAND_AZURE"
+alert_emails       = []
