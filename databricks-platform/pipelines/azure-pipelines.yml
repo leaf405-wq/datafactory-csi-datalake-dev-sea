@@ -1,0 +1,113 @@
+# Azure DevOps pipeline。
+# 在 Pipelines 里新建一条，指向本文件。三个环境不要各写一条流水线。
+#
+# 合并到 main 之后的顺序：dev apply -> test apply -> prod apply。
+# prod 是否自动执行，由 Azure DevOps Environment「databricks-prod」上的审批决定。
+# 在 Environment 里加 Approval check，流水线会停在 prod，批准后才 apply。
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - databricks-platform/**
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - databricks-platform/**
+
+variables:
+  - name: tfVersion
+    value: "1.9.8"
+  - name: workingDir
+    value: databricks-platform/live
+  # 三个 workspace 在同一个订阅时，一条 service connection 就够。
+  # 订阅不同就拆成 scDev / scTest / scProd，再改下面每个 stage 的参数。
+  - name: serviceConnection
+    value: sc-azure-databricks
+
+stages:
+  - stage: Validate
+    displayName: fmt and validate
+    jobs:
+      - job: validate
+        displayName: Validate Terraform
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+          - bash: |
+              set -euo pipefail
+              curl -fsSL "https://releases.hashicorp.com/terraform/$(tfVersion)/terraform_$(tfVersion)_linux_amd64.zip" -o /tmp/terraform.zip
+              unzip -o /tmp/terraform.zip -d /tmp/terraform-bin
+              sudo mv /tmp/terraform-bin/terraform /usr/local/bin/terraform
+              terraform version
+              terraform fmt -check -recursive databricks-platform
+              terraform -chdir=databricks-platform/live init -backend=false -input=false
+              terraform -chdir=databricks-platform/live validate
+            displayName: fmt, init, validate
+
+  - stage: Dev
+    displayName: Apply dev
+    dependsOn: Validate
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - deployment: apply
+        displayName: Apply dev
+        pool:
+          vmImage: ubuntu-latest
+        environment: databricks-dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: steps-terraform.yml
+                  parameters:
+                    env: dev
+                    serviceConnection: ${{ variables.serviceConnection }}
+                    action: apply
+
+  - stage: Test
+    displayName: Apply test
+    dependsOn: Dev
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - deployment: apply
+        displayName: Apply test
+        pool:
+          vmImage: ubuntu-latest
+        environment: databricks-test
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: steps-terraform.yml
+                  parameters:
+                    env: test
+                    serviceConnection: ${{ variables.serviceConnection }}
+                    action: apply
+
+  - stage: Prod
+    displayName: Apply prod
+    dependsOn: Test
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - deployment: apply
+        displayName: Apply prod
+        pool:
+          vmImage: ubuntu-latest
+        environment: databricks-prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: steps-terraform.yml
+                  parameters:
+                    env: prod
+                    serviceConnection: ${{ variables.serviceConnection }}
+                    action: apply
