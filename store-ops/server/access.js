@@ -21,14 +21,20 @@ export function accessFile() {
 
 export async function startAccess() {
   const classpath = [...jars, classes].join(path.delimiter);
+  let bootError = null;
   child = spawn(
     "java",
     ["-cp", classpath, "com.storeops.AccessServer", accessFile(), String(port)],
     { stdio: ["ignore", "pipe", "pipe"] },
   );
+  child.on("error", (err) => {
+    bootError = err.code === "ENOENT"
+      ? new Error("找不到 java。请安装 JDK 17 或以上，并确认 java 命令在 PATH 里。")
+      : err;
+  });
   child.stdout.on("data", (chunk) => process.stdout.write(`[access] ${chunk}`));
   child.stderr.on("data", (chunk) => process.stderr.write(`[access] ${chunk}`));
-  await waitForReady();
+  await waitForReady(() => bootError);
   return accessFile();
 }
 
@@ -36,9 +42,11 @@ export async function stopAccess() {
   if (child && !child.killed) child.kill();
 }
 
-async function waitForReady() {
+async function waitForReady(readError) {
   const started = Date.now();
   while (Date.now() - started < 8000) {
+    const failed = readError();
+    if (failed) throw failed;
     try {
       const response = await fetch(`http://127.0.0.1:${port}/health`);
       if (response.ok) return;
@@ -47,7 +55,7 @@ async function waitForReady() {
     }
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
-  throw new Error("Microsoft Access 数据库进程没有在 8 秒内启动");
+  throw new Error("Microsoft Access 数据库进程没有在 8 秒内启动。请确认已安装 Java，并且 9091 端口没有被占用。");
 }
 
 export async function db(op) {

@@ -36,7 +36,24 @@ export default function App() {
   }
 
   useEffect(() => {
-    reload().catch((err) => setError(err.message));
+    let stop = false;
+    let timer;
+    async function tick() {
+      if (stop) return;
+      try {
+        await reload();
+        if (!stop) setError("");
+      } catch (err) {
+        if (stop) return;
+        setError(err.message);
+        timer = setTimeout(tick, 1500);
+      }
+    }
+    tick();
+    return () => {
+      stop = true;
+      clearTimeout(timer);
+    };
   }, [role]);
 
   async function run(action, id = "submit") {
@@ -91,7 +108,7 @@ export default function App() {
         </aside>
         <main className="main">
           {error ? <div className="error">{error}</div> : null}
-          {!data ? <p>正在打开 Access 数据库…</p> : null}
+          {!data ? <p>{error ? "接口恢复后会自动再打开 Access 数据库。" : "正在打开 Access 数据库…"}</p> : null}
           {data && page === "home" ? <Home data={data} onOpen={openStore} /> : null}
           {data && page === "stores" ? (
             <Stores data={data} role={role} onOpen={openStore} onRun={run} api={api} busyId={busyId} />

@@ -10,6 +10,8 @@
 
 ## 运行
 
+只开 http://localhost:5173 而没有启动后面的接口时，页面会停在「请求失败 / 正在打开 Access 数据库…」。接口和页面要一起启动。
+
 ```bash
 cd store-ops
 npm install
@@ -18,14 +20,7 @@ npm test
 npm run dev
 ```
 
-另开一个终端：
-
-```bash
-cd store-ops
-npm run client
-```
-
-浏览器打开 http://localhost:5173 。接口在 http://127.0.0.1:3780 。
+看到 `store-ops http://127.0.0.1:3780` 和 `Local: http://localhost:5173/` 之后，再打开 http://localhost:5173 。如果 5173 端口已经被旧的前端占用，先关掉那个窗口再执行。本机需要 Node.js，以及 Java（`java` 在 PATH 里）。没有 `javac` 时会使用仓库里已编译的 class。
 
 ## 本机目录
 

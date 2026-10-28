@@ -6,12 +6,19 @@ export function createApi(role, actor) {
   };
 
   async function send(url, options = {}) {
-    const response = await fetch(url, {
-      ...options,
-      headers: { ...headers, ...(options.headers || {}) },
-    });
+    let response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers: { ...headers, ...(options.headers || {}) },
+      });
+    } catch {
+      throw new Error("接口没有连上。请在 store-ops 目录执行 npm run dev，看到 3780 端口后再刷新。");
+    }
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || "请求失败");
+    if (!response.ok) {
+      throw new Error(body.error || "Access 服务没有启动。请在 store-ops 目录执行 npm run dev，不要只开前端。");
+    }
     return body;
   }
 
