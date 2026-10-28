@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createApi, money } from "./api.js";
 
 const ROLES = [
@@ -16,12 +16,16 @@ const ACTOR = {
   system: "系统",
 };
 
+const BUSY_HOLD_MS = 700;
+
 export default function App() {
   const [role, setRole] = useState("expansion");
   const [page, setPage] = useState("home");
   const [storeId, setStoreId] = useState("");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState("");
+  const busyRef = useRef(false);
   const actor = ROLES.find((item) => item.id === role)?.actor || "";
   const api = useMemo(() => createApi(role, actor), [role, actor]);
 
@@ -35,15 +39,24 @@ export default function App() {
     reload().catch((err) => setError(err.message));
   }, [role]);
 
-  async function run(action) {
+  async function run(action, id = "submit") {
+    if (busyRef.current) return null;
+    busyRef.current = true;
+    setBusyId(id);
     setError("");
+    const started = performance.now();
     try {
       const result = await action();
+      const remain = BUSY_HOLD_MS - (performance.now() - started);
+      if (remain > 0) await new Promise((resolve) => setTimeout(resolve, remain));
       await reload();
       return result;
     } catch (err) {
       setError(err.message);
       return null;
+    } finally {
+      busyRef.current = false;
+      setBusyId("");
     }
   }
 
@@ -81,11 +94,11 @@ export default function App() {
           {!data ? <p>正在打开 Access 数据库…</p> : null}
           {data && page === "home" ? <Home data={data} onOpen={openStore} /> : null}
           {data && page === "stores" ? (
-            <Stores data={data} role={role} onOpen={openStore} onRun={run} api={api} />
+            <Stores data={data} role={role} onOpen={openStore} onRun={run} api={api} busyId={busyId} />
           ) : null}
-          {data && page === "contract" ? <ContractDesk api={api} onRun={run} onOpen={openStore} /> : null}
+          {data && page === "contract" ? <ContractDesk api={api} onRun={run} onOpen={openStore} busyId={busyId} /> : null}
           {data && page === "journey" ? (
-            <Journey data={data} storeId={storeId} role={role} api={api} onRun={run} />
+            <Journey data={data} storeId={storeId} role={role} api={api} onRun={run} busyId={busyId} />
           ) : null}
         </main>
       </div>
@@ -128,7 +141,22 @@ function Home({ data, onOpen }) {
   );
 }
 
-function Stores({ data, role, onOpen, onRun, api }) {
+function Action({ id, busyId, pending, children }) {
+  const waiting = busyId === id;
+  return (
+    <span className={waiting ? "action is-busy" : "action"}>
+      {children}
+      <label className="action-status" htmlFor={id} aria-hidden={waiting ? "false" : "true"}>
+        <span>
+          <progress />
+          {pending}
+        </span>
+      </label>
+    </span>
+  );
+}
+
+function Stores({ data, role, onOpen, onRun, api, busyId }) {
   return (
     <>
       <h2>店览</h2>
@@ -156,15 +184,21 @@ function Stores({ data, role, onOpen, onRun, api }) {
                   <td>{store.landlord}</td>
                   <td>{store.lease_end}</td>
                   <td>
-                    <select
-                      value={store.keep_decision || "待评估"}
-                      onChange={(event) => onRun(() => api.decision(store.id, { keepDecision: event.target.value, actionPlan: store.action_plan }))}
-                      disabled={role !== "ops" && role !== "executive"}
-                    >
-                      {["待评估", "Keep", "Keep & Renovate", "Keep & Relocate", "Close"].map((item) => (
-                        <option key={item}>{item}</option>
-                      ))}
-                    </select>
+                    <Action id={`decision-${store.id}`} busyId={busyId} pending="正在保存动作">
+                      <select
+                        id={`decision-${store.id}`}
+                        value={store.keep_decision || "待评估"}
+                        onChange={(event) => onRun(
+                          () => api.decision(store.id, { keepDecision: event.target.value, actionPlan: store.action_plan }),
+                          `decision-${store.id}`,
+                        )}
+                        disabled={(role !== "ops" && role !== "executive") || Boolean(busyId)}
+                      >
+                        {["待评估", "Keep", "Keep & Renovate", "Keep & Relocate", "Close"].map((item) => (
+                          <option key={item}>{item}</option>
+                        ))}
+                      </select>
+                    </Action>
                   </td>
                   <td className="num">{sales ? money(sales.sales) : "—"}</td>
                   <td className="num">{bill ? money(bill.payable) : "—"}</td>
@@ -180,7 +214,7 @@ function Stores({ data, role, onOpen, onRun, api }) {
   );
 }
 
-function ContractDesk({ api, onRun, onOpen }) {
+function ContractDesk({ api, onRun, onOpen, busyId }) {
   const [text, setText] = useState("");
   const [draft, setDraft] = useState(null);
   const [edits, setEdits] = useState({});
@@ -192,12 +226,16 @@ function ContractDesk({ api, onRun, onOpen }) {
       <div className="panel">
         <textarea value={text} onChange={(event) => setText(event.target.value)} placeholder="把合同关键条款粘贴在这里" />
         <div className="row">
-          <button className="ghost" onClick={() => onRun(async () => setText((await api.sample()).text))}>载入示例合同</button>
-          <button className="button" onClick={() => onRun(async () => {
-            const parsed = await api.upload(text);
-            setDraft(parsed);
-            setEdits(Object.fromEntries(parsed.fields.map((field) => [field.field_name, field.field_value])));
-          })}>上传并抽取条款</button>
+          <Action id="load-sample" busyId={busyId} pending="正在载入示例">
+            <button id="load-sample" className="ghost" disabled={Boolean(busyId)} onClick={() => onRun(async () => setText((await api.sample()).text), "load-sample")}>载入示例合同</button>
+          </Action>
+          <Action id="upload-contract" busyId={busyId} pending="正在抽取条款">
+            <button id="upload-contract" className="button" disabled={Boolean(busyId)} onClick={() => onRun(async () => {
+              const parsed = await api.upload(text);
+              setDraft(parsed);
+              setEdits(Object.fromEntries(parsed.fields.map((field) => [field.field_name, field.field_value])));
+            }, "upload-contract")}>上传并抽取条款</button>
+          </Action>
         </div>
       </div>
       {draft ? (
@@ -212,10 +250,12 @@ function ContractDesk({ api, onRun, onOpen }) {
             ))}
           </div>
           <div className="row">
-            <button className="button" onClick={async () => {
-              const result = await onRun(() => api.confirm(draft.contractId, edits));
-              if (result?.storeId) onOpen(result.storeId);
-            }}>确认并生成店铺档案</button>
+            <Action id="confirm-contract" busyId={busyId} pending="正在生成店铺档案">
+              <button id="confirm-contract" className="button" disabled={Boolean(busyId)} onClick={async () => {
+                const result = await onRun(() => api.confirm(draft.contractId, edits), "confirm-contract");
+                if (result?.storeId) onOpen(result.storeId);
+              }}>确认并生成店铺档案</button>
+            </Action>
           </div>
         </div>
       ) : null}
@@ -223,7 +263,7 @@ function ContractDesk({ api, onRun, onOpen }) {
   );
 }
 
-function Journey({ data, storeId, role, api, onRun }) {
+function Journey({ data, storeId, role, api, onRun, busyId }) {
   const store = data.stores.find((item) => item.id === storeId);
   const step = data.journey.find((item) => item.store_id === storeId)?.step || 0;
   const bill = data.bills.find((item) => item.store_id === storeId);
@@ -261,15 +301,19 @@ function Journey({ data, storeId, role, api, onRun }) {
         <p className="meta">第 {step} / 13 步已完成。下一步只能由泳道上的部门提交。</p>
 
         {next === 5 ? (
-          <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.activity(store.id, { activityNote, tempRate, subsidy })); }}>
+          <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.activity(store.id, { activityNote, tempRate, subsidy }), "save-activity"); }}>
             <h3>5　录入当月活动</h3>
-            <label>特殊活动</label>
-            <input value={activityNote} onChange={(event) => setActivityNote(event.target.value)} />
-            <label>临时提点（小数，留空表示沿用合同）</label>
-            <input value={tempRate} onChange={(event) => setTempRate(event.target.value)} placeholder="0.12" />
-            <label>补贴</label>
-            <input value={subsidy} onChange={(event) => setSubsidy(event.target.value)} />
-            <div className="row"><button className="button" disabled={role !== "ops"}>提交给系统</button></div>
+            <label htmlFor="activity-note">特殊活动</label>
+            <input id="activity-note" value={activityNote} onChange={(event) => setActivityNote(event.target.value)} />
+            <label htmlFor="temp-rate">临时提点（小数，留空表示沿用合同）</label>
+            <input id="temp-rate" value={tempRate} onChange={(event) => setTempRate(event.target.value)} placeholder="留空沿用合同" />
+            <label htmlFor="subsidy">补贴</label>
+            <input id="subsidy" value={subsidy} onChange={(event) => setSubsidy(event.target.value)} />
+            <div className="row">
+              <Action id="save-activity" busyId={busyId} pending="正在写入当月活动">
+                <button id="save-activity" className="button" type="submit" disabled={role !== "ops" || Boolean(busyId)}>提交给系统</button>
+              </Action>
+            </div>
             {role !== "ops" ? <p className="meta">这一步由营运部提交。请先切换右上角身份。</p> : null}
           </form>
         ) : null}
@@ -278,7 +322,11 @@ function Journey({ data, storeId, role, api, onRun }) {
           <div>
             <h3>6–7　接收 DW 销售并计算</h3>
             <p className="lede">系统读取本月 DW 销售，按免租、两者取高、附加费、补贴、增值税的顺序出账，并把距保底过大写成预警。</p>
-            <button className="button" disabled={role !== "ops" && role !== "finance"} onClick={() => onRun(() => api.calculate(store.id))}>计算本月租金</button>
+            <div className="row">
+              <Action id="calculate-rent" busyId={busyId} pending="正在计算租金">
+                <button id="calculate-rent" className="button" disabled={(role !== "ops" && role !== "finance") || Boolean(busyId)} onClick={() => onRun(() => api.calculate(store.id), "calculate-rent")}>计算本月租金</button>
+              </Action>
+            </div>
           </div>
         ) : null}
 
@@ -287,12 +335,16 @@ function Journey({ data, storeId, role, api, onRun }) {
         {next === 8 ? (
           <div>
             <h3>8　商场对账单已送到财务</h3>
-            <button className="button" disabled={role !== "finance"} onClick={() => onRun(() => api.mallReceived(store.id))}>登记收妥</button>
+            <div className="row">
+              <Action id="mall-received" busyId={busyId} pending="正在登记收妥">
+                <button id="mall-received" className="button" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.mallReceived(store.id), "mall-received")}>登记收妥</button>
+              </Action>
+            </div>
           </div>
         ) : null}
 
         {next >= 9 && next <= 11 ? (
-          <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.reconcile(store.id, mall)); }}>
+          <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.reconcile(store.id, mall), "reconcile"); }}>
             <h3>9–11　上传商场账单并自动比对</h3>
             {["base_rent", "commission_rent", "property_fee", "promo_fee", "utility_fee", "card_fee", "advance_fee", "total"].map((key) => (
               <div key={key}>
@@ -309,7 +361,11 @@ function Journey({ data, storeId, role, api, onRun }) {
                 <input value={mall[key]} onChange={(event) => setMall({ ...mall, [key]: event.target.value })} />
               </div>
             ))}
-            <div className="row"><button className="button" disabled={role !== "finance"}>比对</button></div>
+            <div className="row">
+              <Action id="reconcile" busyId={busyId} pending="正在比对账单">
+                <button id="reconcile" className="button" type="submit" disabled={role !== "finance" || Boolean(busyId)}>比对</button>
+              </Action>
+            </div>
           </form>
         ) : null}
 
@@ -321,8 +377,12 @@ function Journey({ data, storeId, role, api, onRun }) {
             <label>原因</label>
             <input value={reason} onChange={(event) => setReason(event.target.value)} />
             <div className="row">
-              <button className="button" disabled={role !== "finance"} onClick={() => onRun(() => api.resolve(store.id, { resolution: "accept", reason }))}>确认无误</button>
-              <button className="ghost" disabled={role !== "finance"} onClick={() => onRun(() => api.resolve(store.id, { resolution: "dispute", reason }))}>发起申诉</button>
+              <Action id="resolve-accept" busyId={busyId} pending="正在确认账单">
+                <button id="resolve-accept" className="button" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.resolve(store.id, { resolution: "accept", reason }), "resolve-accept")}>确认无误</button>
+              </Action>
+              <Action id="resolve-dispute" busyId={busyId} pending="正在生成差异函">
+                <button id="resolve-dispute" className="ghost" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.resolve(store.id, { resolution: "dispute", reason }), "resolve-dispute")}>发起申诉</button>
+              </Action>
             </div>
           </div>
         ) : null}
@@ -330,7 +390,11 @@ function Journey({ data, storeId, role, api, onRun }) {
         {next === 13 ? (
           <div>
             <h3>13　生成付款申请</h3>
-            <button className="button" disabled={role !== "finance"} onClick={() => onRun(() => api.payment(store.id))}>按系统金额生成付款申请</button>
+            <div className="row">
+              <Action id="create-payment" busyId={busyId} pending="正在生成付款申请">
+                <button id="create-payment" className="button" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.payment(store.id), "create-payment")}>按系统金额生成付款申请</button>
+              </Action>
+            </div>
           </div>
         ) : null}
 
