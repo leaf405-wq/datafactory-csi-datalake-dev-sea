@@ -2,5 +2,5 @@ node_modules/
 client/node_modules/
 client/dist/
 server/classes/
-data/*.accdb
-data/*.mdb
+data/~$*
+data/*.laccdb

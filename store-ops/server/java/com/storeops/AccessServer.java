@@ -98,6 +98,13 @@ public final class AccessServer {
         server.createContext("/health", AccessServer::health);
         server.createContext("/db", AccessServer::handle);
         server.start();
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                if (db != null) db.close();
+            } catch (IOException ignored) {
+                // process is already exiting
+            }
+        }));
         System.out.println("ACCESS_READY " + file.toAbsolutePath() + " port " + port);
     }
 

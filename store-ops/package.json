@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "access:build": "javac -encoding UTF-8 -cp \"server/lib/jackcess-4.0.7.jar:server/lib/commons-lang3-3.10.jar:server/lib/commons-logging-1.2.jar:server/lib/json-20240303.jar\" -d server/classes server/java/com/storeops/AccessServer.java",
+    "access:build": "node server/build-access.js",
     "start": "node server/index.js",
     "dev": "npm run access:build && node server/index.js",
     "client": "npm run dev --prefix client",
