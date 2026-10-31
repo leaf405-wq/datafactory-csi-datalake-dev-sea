@@ -264,32 +264,82 @@ function Stores({ data, role, onOpen, onRun, api, busyId }) {
 }
 
 function ContractDesk({ api, onRun, onOpen, busyId }) {
-  const [text, setText] = useState("");
+  const [imported, setImported] = useState(null);
   const [draft, setDraft] = useState(null);
   const [edits, setEdits] = useState({});
+  const fileRef = useRef(null);
+
+  function takeImport(result) {
+    setImported(result);
+    setDraft(null);
+    setEdits({});
+  }
+
+  async function importChosen(file) {
+    const contentBase64 = await readBase64(file);
+    takeImport(await api.importFile(file.name, contentBase64));
+  }
+
+  const text = imported?.text || "";
 
   return (
     <>
       <h2>1–4　上传合同，复核，生成档案</h2>
-      <p className="lede">拓展部上传合同。系统立刻抽出编号、租期、免租、保底、扣点和费用。低置信度字段标出来，确认后才写入店铺和租金规则。</p>
+      <p className="lede">拓展部按这个顺序办理：原件进入本机文件柜（对应 MinIO），Word / PDF 取出文字作为导入结果（扫描件留给本机 PaddleOCR），再点提取关键字（对应本机 Qwen，合同不出这台电脑），人工确认后才生成店铺档案。</p>
+      <ol className="pipe">
+        <li className={imported ? "done" : "now"}>导入合同</li>
+        <li className={imported ? "done" : ""}>导入结果</li>
+        <li className={draft ? "done" : imported ? "now" : ""}>提取关键字</li>
+        <li className={draft ? "now" : ""}>人工确认</li>
+      </ol>
       <div className="panel">
-        <textarea value={text} onChange={(event) => setText(event.target.value)} placeholder="把合同关键条款粘贴在这里" />
+        <input
+          ref={fileRef}
+          className="file-input"
+          type="file"
+          accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            onRun(() => importChosen(file), "import-contract");
+          }}
+        />
         <div className="row">
-          <Action id="load-sample" busyId={busyId} pending="正在载入示例">
-            <button id="load-sample" className="ghost" disabled={Boolean(busyId)} onClick={() => onRun(async () => setText((await api.sample()).text), "load-sample")}>载入示例合同</button>
+          <Action id="import-contract" busyId={busyId} pending="正在导入合同">
+            <button id="import-contract" className="button" disabled={Boolean(busyId)} onClick={() => fileRef.current?.click()}>导入合同</button>
           </Action>
-          <Action id="upload-contract" busyId={busyId} pending="正在抽取条款">
-            <button id="upload-contract" className="button" disabled={Boolean(busyId)} onClick={() => onRun(async () => {
-              const parsed = await api.upload(text);
-              setDraft(parsed);
-              setEdits(Object.fromEntries(parsed.fields.map((field) => [field.field_name, field.field_value])));
-            }, "upload-contract")}>上传并抽取条款</button>
+          <Action id="import-docx" busyId={busyId} pending="正在导入示例 Word">
+            <button id="import-docx" className="ghost" disabled={Boolean(busyId)} onClick={() => onRun(async () => takeImport(await api.importSample("docx")), "import-docx")}>导入示例 Word</button>
+          </Action>
+          <Action id="import-pdf" busyId={busyId} pending="正在导入示例 PDF">
+            <button id="import-pdf" className="ghost" disabled={Boolean(busyId)} onClick={() => onRun(async () => takeImport(await api.importSample("pdf")), "import-pdf")}>导入示例 PDF</button>
           </Action>
         </div>
       </div>
+      {imported ? (
+        <div className="panel" style={{ marginTop: 14 }}>
+          <h3>导入结果</h3>
+          <p className="meta">{imported.filename} · {imported.reader} · 原件在 {imported.cabinet}/{imported.storedAs}</p>
+          {text ? (
+            <textarea id="import-result" value={text} onChange={(event) => setImported({ ...imported, text: event.target.value })} />
+          ) : (
+            <p className="lede">这份文件没有文字层。本机演示不把扫描件送出电脑。接上 PaddleOCR 之后，才能在这里看到识别结果。</p>
+          )}
+          <div className="row">
+            <Action id="extract-keywords" busyId={busyId} pending="正在提取关键字">
+              <button id="extract-keywords" className="button" disabled={!text.trim() || Boolean(busyId)} onClick={() => onRun(async () => {
+                const parsed = await api.upload(text);
+                setDraft(parsed);
+                setEdits(Object.fromEntries(parsed.fields.map((field) => [field.field_name, field.field_value])));
+              }, "extract-keywords")}>提取关键字</button>
+            </Action>
+          </div>
+        </div>
+      ) : null}
       {draft ? (
         <div className="panel" style={{ marginTop: 14 }}>
-          <h3>抽取结果 · 置信度 {Math.round(draft.confidence * 100)}%</h3>
+          <h3>关键字 · 请人工确认 · 置信度 {Math.round(draft.confidence * 100)}%</h3>
           <div className="fields">
             {draft.fields.map((field) => (
               <div className="field" key={field.field_name}>
@@ -310,6 +360,15 @@ function ContractDesk({ api, onRun, onOpen, busyId }) {
       ) : null}
     </>
   );
+}
+
+function readBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function Journey({ data, storeId, role, api, onRun, busyId }) {

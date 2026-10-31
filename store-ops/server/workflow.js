@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { all, find, insert, remove, update } from "./access.js";
 import { parseContract } from "./parser.js";
+import { readContractFile } from "./importFile.js";
 import {
   buildLetter,
   calculateMonthlyRent,
@@ -133,9 +134,21 @@ export async function snapshot() {
   };
 }
 
+export async function importContract({ role, actor, filename, contentBase64, sample }) {
+  assertRole(role, ["expansion"]);
+  let result;
+  try {
+    result = await readContractFile({ filename, contentBase64, sample });
+  } catch (error) {
+    throw new ApiError(error.status || 400, error.message || "合同导入失败");
+  }
+  await audit(actor, role, "导入合同原件", result.filename);
+  return result;
+}
+
 export async function uploadContract({ role, actor, text }) {
   assertRole(role, ["expansion"]);
-  if (!String(text || "").trim()) throw new ApiError(400, "请粘贴合同文本或扫描件识别结果");
+  if (!String(text || "").trim()) throw new ApiError(400, "请先导入合同，看到文字结果后再提取关键字");
   const parsed = parseContract(text);
   const contractId = id();
   await insert("contracts", {
@@ -193,6 +206,8 @@ export async function confirmContract({ role, actor, contractId, edits = {} }) {
     const field = fields.find((item) => item.field_name === name);
     return field?.field_value ?? fallback;
   };
+  const [leaseStart, leaseEnd] = splitRange(valueOf("lease_term", ""));
+  const [freeStart, freeEnd] = splitRange(valueOf("rent_free", ""));
   const model = MODEL_FROM_EDIT(valueOf("model", contract.model));
   if (!model) throw new ApiError(400, "租金模式无法识别，请改成两者取高、两者取低、纯固定、纯扣点、保底+超额、阶梯扣点或封顶扣点");
 
@@ -214,8 +229,8 @@ export async function confirmContract({ role, actor, contractId, edits = {} }) {
     floor: "1F",
     status: "NORMAL_OPERATION",
     keep_decision: "待评估",
-    lease_end: String(valueOf("end_date", "")),
-    lifecycle_start: String(valueOf("start_date", "")),
+    lease_end: leaseEnd || String(valueOf("end_date", "")),
+    lifecycle_start: leaseStart || String(valueOf("start_date", "")),
     landlord: String(valueOf("landlord", "")),
     rank: "",
     action_plan: "",
@@ -226,17 +241,17 @@ export async function confirmContract({ role, actor, contractId, edits = {} }) {
     model,
     contract_no: String(valueOf("contract_no", "")),
     fixed_rent: Number(valueOf("fixed_rent", 0)) || 0,
-    rate: Number(valueOf("rate", 0)) || 0,
+    rate: parsePercent(valueOf("rate", ""), contract.rate),
     min_sales: Number(valueOf("min_sales", 0)) || 0,
     property_fee: Number(valueOf("property_fee", 0)) || 0,
     promo_fee: Number(valueOf("promo_fee", 0)) || 0,
     utility_fee: Number(valueOf("utility_fee", 0)) || 0,
-    vat_rate: Number(valueOf("vat_rate", 0.09)) || 0.09,
-    rent_free_start: String(valueOf("rent_free_start", "")),
-    rent_free_end: String(valueOf("rent_free_end", "")),
+    vat_rate: parsePercent(valueOf("vat_rate", ""), contract.vat_rate || 0.09),
+    rent_free_start: freeStart || String(valueOf("rent_free_start", "")),
+    rent_free_end: freeEnd || String(valueOf("rent_free_end", "")),
     waive_property: valueOf("waive_property") === "是" || Number(valueOf("waive_property")) === 1 ? 1 : 0,
-    start_date: String(valueOf("start_date", "")),
-    end_date: String(valueOf("end_date", "")),
+    start_date: leaseStart || String(valueOf("start_date", "")),
+    end_date: leaseEnd || String(valueOf("end_date", "")),
     confirmed_by: actor || ROLE_LABEL[role],
   });
   for (const field of fields) {
@@ -496,6 +511,19 @@ function comparisonLines(bill, mall) {
 async function replaceMonth(table, storeId) {
   const rows = await find(table, { store_id: storeId, year: PERIOD.year, month: PERIOD.month });
   for (const row of rows) await remove(table, row.id);
+}
+
+function splitRange(text) {
+  const match = String(text || "").match(/(\d{4}-\d{2}-\d{2})\s*[至到~\-—]+\s*(\d{4}-\d{2}-\d{2})/);
+  return match ? [match[1], match[2]] : ["", ""];
+}
+
+function parsePercent(text, fallback) {
+  const raw = String(text ?? "").replace("%", "").trim();
+  if (!raw) return Number(fallback) || 0;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return Number(fallback) || 0;
+  return n > 1 ? n / 100 : n;
 }
 
 function MODEL_FROM_EDIT(value) {

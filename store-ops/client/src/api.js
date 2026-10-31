@@ -25,6 +25,8 @@ export function createApi(role, actor) {
   return {
     snapshot: () => send("/api/snapshot"),
     sample: () => send("/api/sample-contract"),
+    importSample: (sample) => send("/api/contracts/import", { method: "POST", body: JSON.stringify({ sample }) }),
+    importFile: (filename, contentBase64) => send("/api/contracts/import", { method: "POST", body: JSON.stringify({ filename, contentBase64 }) }),
     upload: (text) => send("/api/contracts", { method: "POST", body: JSON.stringify({ text }) }),
     confirm: (id, edits) => send(`/api/contracts/${id}/confirm`, { method: "POST", body: JSON.stringify({ edits }) }),
     activity: (id, payload) => send(`/api/stores/${id}/activity`, { method: "POST", body: JSON.stringify(payload) }),

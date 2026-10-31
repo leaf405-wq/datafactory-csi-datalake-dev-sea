@@ -17,12 +17,13 @@ import {
   saveActivity,
   setDecision,
   snapshot,
+  importContract,
   uploadContract,
 } from "./workflow.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "12mb" }));
 
 function actor(req) {
   const raw = String(req.header("x-actor") || "");
@@ -52,6 +53,12 @@ function wrap(handler) {
 app.get("/api/health", wrap(async () => ({ ok: true, period: PERIOD })));
 app.get("/api/sample-contract", wrap(async () => ({ text: SAMPLE_CONTRACT })));
 app.get("/api/snapshot", wrap(async () => snapshot()));
+app.post("/api/contracts/import", wrap(async (req) => importContract({
+  ...actor(req),
+  filename: req.body.filename,
+  contentBase64: req.body.contentBase64,
+  sample: req.body.sample,
+})));
 app.post("/api/contracts", wrap(async (req) => uploadContract({ ...actor(req), text: req.body.text })));
 app.post("/api/contracts/:id/confirm", wrap(async (req) => confirmContract({
   ...actor(req),

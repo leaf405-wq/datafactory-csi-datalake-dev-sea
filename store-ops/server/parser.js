@@ -59,11 +59,7 @@ export function parseContract(text) {
 
   const required = [contractNo, storeName, startDate, endDate, model, fixedRent || rate];
   const confidence = required.filter(Boolean).length / required.length;
-
-  return {
-    confidence: Math.round(confidence * 100) / 100,
-    model,
-    values: {
+  const values = {
       contract_no: contractNo,
       brand,
       store_name: storeName,
@@ -86,9 +82,59 @@ export function parseContract(text) {
       selling_area: numberOrZero(selling),
       reference_sales: numberOrZero(referenceSales),
       waive_property: waive === "是" ? 1 : 0,
-    },
-    fields,
+    };
+  return {
+    confidence: Math.round(confidence * 100) / 100,
+    model,
+    values,
+    fields: reviewFields(values, fields, model),
   };
+}
+
+export function reviewFields(values, rawFields, model) {
+  const raw = Object.fromEntries(rawFields.map((field) => [field.field_name, field.field_value]));
+  const lease = values.start_date && values.end_date ? `${values.start_date} 至 ${values.end_date}` : "";
+  const free = values.rent_free_start && values.rent_free_end ? `${values.rent_free_start} 至 ${values.rent_free_end}` : "";
+  const rows = [
+    ["contract_no", "合同编号", values.contract_no],
+    ["brand", "品牌", values.brand],
+    ["store_name", "店铺名称", values.store_name],
+    ["mall_name", "商场", values.mall_name],
+    ["region", "区域", values.region],
+    ["city", "城市", values.city],
+    ["landlord", "业主", values.landlord],
+    ["lease_term", "租赁期限", lease],
+    ["rent_free", "免租期", free],
+    ["waive_property", "免租是否免物业", raw.waive_property || ""],
+    ["model", "租金模式", raw.model || ""],
+    ["fixed_rent", "固定租金", values.fixed_rent ? String(values.fixed_rent) : ""],
+    ["rate", "扣点比例", percentText(values.rate)],
+    ["min_sales", "保底销售额", values.min_sales ? String(values.min_sales) : ""],
+    ["property_fee", "物业费", values.property_fee ? String(values.property_fee) : ""],
+    ["promo_fee", "推广费", values.promo_fee ? String(values.promo_fee) : ""],
+    ["utility_fee", "水电费", values.utility_fee ? String(values.utility_fee) : ""],
+    ["vat_rate", "增值税率", raw.vat_rate ? percentText(values.vat_rate) : ""],
+    ["area_sqm", "计租面积", values.area_sqm ? String(values.area_sqm) : ""],
+    ["selling_area", "销售面积", values.selling_area ? String(values.selling_area) : ""],
+    ["reference_sales", "参考月销售", values.reference_sales ? String(values.reference_sales) : ""],
+  ];
+  return rows.map(([field_name, label, field_value]) => {
+    const missing = !String(field_value || "").trim() || (field_name === "model" && !model);
+    return {
+      field_name,
+      label,
+      field_value: String(field_value || ""),
+      confidence: missing ? 0.35 : 0.97,
+      needs_review: missing ? 1 : 0,
+    };
+  });
+}
+
+export function percentText(rate) {
+  const n = Number(rate);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  const shown = Math.round(n * 1000) / 10;
+  return `${Number.isInteger(shown) ? shown : shown}%`;
 }
 
 export const SAMPLE_CONTRACT = `合同编号：SH-IXT-2026-014
