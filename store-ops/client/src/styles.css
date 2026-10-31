@@ -104,6 +104,9 @@ label.action-status progress {
   accent-color: var(--accent);
   vertical-align: middle;
 }
+.wait-copy { display: inline-flex; align-items: baseline; }
+.wait-dots { display: inline-flex; width: 6ch; }
+.wait-dots .off { visibility: hidden; }
 .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
 .field small { color: var(--warn); }
 .error { background: #fde8e4; color: var(--bad); padding: 10px 12px; border-radius: 10px; margin-bottom: 12px; animation: rise 220ms ease; }
