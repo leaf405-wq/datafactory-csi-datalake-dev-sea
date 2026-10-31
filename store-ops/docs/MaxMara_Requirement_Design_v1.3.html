@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAX MARA - SWO · 零售门店经营智能平台方案 V1.3</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-light: #dbeafe;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --plan-a: #1d4ed8;
+            --plan-b: #047857;
+            --plan-c: #c2410c;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            display: flex;
+        }
+        .sidebar {
+            width: 260px; height: 100vh; position: fixed; left: 0; top: 0;
+            background: var(--card-bg); border-right: 1px solid var(--border-color);
+            padding: 20px 0; overflow-y: auto; z-index: 100;
+        }
+        .sidebar h2 { padding: 0 20px 8px; font-size: 16px; color: var(--primary-color); }
+        .sidebar .side-meta {
+            padding: 0 20px 16px; font-size: 12px; color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color); margin-bottom: 10px;
+        }
+        .sidebar .group-label {
+            padding: 12px 20px 4px; font-size: 11px; letter-spacing: .08em;
+            color: var(--text-secondary); font-weight: 700;
+        }
+        .sidebar ul { list-style: none; }
+        .sidebar li a {
+            display: block; padding: 10px 20px; color: var(--text-secondary);
+            text-decoration: none; font-size: 14px; transition: all .2s;
+            border-left: 3px solid transparent; cursor: pointer;
+        }
+        .sidebar li a:hover, .sidebar li a.active {
+            background: var(--primary-light); color: var(--primary-color);
+            border-left-color: var(--primary-color); font-weight: 600;
+        }
+        .main-content { margin-left: 260px; flex: 1; min-width: 0; padding: 28px 48px 64px; max-width: 1280px; }
+        h1 { font-size: 30px; margin-bottom: 8px; }
+        h2 { font-size: 22px; margin: 8px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--primary-color); display: inline-block; }
+        h3 { font-size: 17px; margin: 18px 0 10px; }
+        .subtitle { color: var(--text-secondary); font-size: 15px; margin-bottom: 18px; }
+        .card {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 24px; margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.05);
+        }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+        th, td { border: 1px solid var(--border-color); padding: 10px 12px; text-align: left; vertical-align: top; }
+        th { background: #f1f5f9; font-weight: 600; }
+        tr:nth-child(even) { background: #f8fafc; }
+        .table-wrap { overflow-x: auto; max-width: 100%; }
+        td, th { overflow-wrap: anywhere; }
+        #issue-table td:first-child,
+        #tech-table td:first-child,
+        #biz-table td:first-child { white-space: nowrap; overflow-wrap: normal; width: 4.5rem; }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .tag-orange { background: #ffedd5; color: #c2410c; }
+        .tag-green { background: #d1fae5; color: #047857; }
+        .tag-blue { background: #dbeafe; color: #1d4ed8; }
+        .tag-red { background: #fee2e2; color: #b91c1c; }
+        .tabbar {
+            position: sticky; top: 0; z-index: 30;
+            background: rgba(248,250,252,.96); backdrop-filter: blur(8px);
+            padding: 8px 0 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color);
+        }
+        .tab-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--text-secondary); margin: 6px 0 0; }
+        .tabbar { max-width: 100%; }
+        .tabs { display: flex; max-width: 100%; min-width: 0; border-bottom: 2px solid var(--border-color); margin-bottom: 4px; overflow-x: auto; }
+        .tab-btn {
+            padding: 12px 18px; background: none; border: none; cursor: pointer;
+            font-size: 15px; color: var(--text-secondary); border-bottom: 2px solid transparent;
+            margin-bottom: -2px; white-space: nowrap; transition: all .2s; font-family: inherit;
+        }
+        .tab-btn:hover { color: var(--primary-color); }
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: 600; }
+        .tab-btn.plan-a.active { color: var(--plan-a); border-bottom-color: var(--plan-a); }
+        .tab-btn.plan-b.active { color: var(--plan-b); border-bottom-color: var(--plan-b); }
+        .tab-btn.plan-c.active { color: var(--plan-c); border-bottom-color: var(--plan-c); }
+        .tab-content { display: none; animation: fadeIn .3s; }
+        .tab-content.active { display: block; }
+        .callout {
+            background: #f0fdf4; border: 1px dashed #047857;
+            border-radius: 8px; padding: 16px 18px; margin-bottom: 16px;
+        }
+        .callout.warn {
+            background: #fff7ed; border-color: #c2410c;
+        }
+        .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .plan-card {
+            border: 1px solid var(--border-color); border-radius: 8px; padding: 18px;
+            background: white; cursor: pointer; transition: transform .15s, box-shadow .15s;
+        }
+        .plan-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,.08); }
+        .plan-card h3 { margin-top: 8px; }
+        .plan-card p { color: var(--text-secondary); font-size: 14px; }
+        .plan-card.recommend { border-color: #047857; box-shadow: inset 0 0 0 1px #047857; }
+        .mermaid-container {
+            background: white; padding: 16px; border-radius: 8px;
+            border: 1px solid var(--border-color); overflow-x: auto; max-width: 100%; text-align: center; margin: 12px 0;
+        }
+        .search {
+            width: 100%; max-width: 420px; padding: 10px 12px; border: 1px solid var(--border-color);
+            border-radius: 6px; font-size: 14px; font-family: inherit; margin: 8px 0;
+        }
+        .meta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+        .meta-pill { background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px; min-width: 160px; }
+        .meta-pill span { display: block; font-size: 12px; color: var(--text-secondary); }
+        .linkish { color: var(--primary-color); cursor: pointer; font-weight: 600; background: none; border: none; font-family: inherit; font-size: 14px; padding: 0; }
+        .empty-note { color: var(--text-secondary); font-size: 13px; display: none; margin-top: 8px; }
+        footer.page-foot { text-align: center; padding: 28px 0 8px; color: var(--text-secondary); font-size: 13px; }
+        ul.plain { margin: 8px 0 8px 18px; }
+        ul.plain li { margin: 4px 0; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 980px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; width: 100%; padding: 16px; }
+            .plan-grid { grid-template-columns: 1fr; }
+            h1, h2 { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <h2>MAX MARA - SWO</h2>
+        <div class="side-meta">零售门店经营智能平台<br>方案 V1.3 · 脱离 Azure</div>
+        <div class="group-label">方案类别</div>
+        <ul>
+            <li><a data-tab="plan-b" href="#plan-b">方案 B · 企业级推荐</a></li>
+            <li><a data-tab="plan-c" href="#plan-c">方案 C · 快速交付</a></li>
+            <li><a data-tab="plan-a" href="#plan-a">方案 A · 可选通知</a></li>
+            <li><a data-tab="compare" href="#compare">利弊与成本</a></li>
+        </ul>
+        <div class="group-label">更新与数据</div>
+        <ul>
+            <li><a data-tab="issues" href="#issues" class="active">问题与改进</a></li>
+            <li><a data-tab="overview" href="#overview">总览</a></li>
+            <li><a data-tab="data" href="#data">数据工具箱</a></li>
+            <li><a data-tab="tools" href="#tools">工具对照</a></li>
+            <li><a data-tab="tech" href="#tech">技术问答</a></li>
+            <li><a data-tab="biz" href="#biz">业务问答</a></li>
+            <li><a data-tab="store" href="#store">店览要点</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <div class="tabbar">
+            <div class="tab-label">方案类别</div>
+            <div class="tabs" role="tablist">
+                <button class="tab-btn plan-b" data-tab="plan-b" role="tab">方案 B · 企业级推荐</button>
+                <button class="tab-btn plan-c" data-tab="plan-c" role="tab">方案 C · 快速交付</button>
+                <button class="tab-btn plan-a" data-tab="plan-a" role="tab">方案 A · 可选通知</button>
+                <button class="tab-btn" data-tab="compare" role="tab">利弊与成本</button>
+            </div>
+            <div class="tab-label">更新与数据</div>
+            <div class="tabs" role="tablist">
+                <button class="tab-btn active" data-tab="issues" role="tab">问题与改进</button>
+                <button class="tab-btn" data-tab="overview" role="tab">总览</button>
+                <button class="tab-btn" data-tab="data" role="tab">数据工具箱</button>
+                <button class="tab-btn" data-tab="tools" role="tab">工具对照</button>
+                <button class="tab-btn" data-tab="tech" role="tab">技术问答</button>
+                <button class="tab-btn" data-tab="biz" role="tab">业务问答</button>
+                <button class="tab-btn" data-tab="store" role="tab">店览要点</button>
+            </div>
+        </div>
+
+        <section id="issues" class="tab-content active">
+            <p class="subtitle" style="margin-bottom:4px;">以 V1.2 为基准</p>
+            <h1>问题与改进</h1>
+            <p class="subtitle">V1.2 的三个应用方案都还站在 Azure 上。V1.3 把数据、AI、调度、身份换成一套可放在客户机房的工具，三个方案共用，不再按页、按 vCore、按 token 计费。</p>
+            <div class="meta-row">
+                <div class="meta-pill"><span>版本</span><strong>V1.3</strong></div>
+                <div class="meta-pill"><span>日期</span><strong>2026-10-31</strong></div>
+                <div class="meta-pill"><span>基准</span><strong>MaxMara_Requirement_Design_v1.2</strong></div>
+                <div class="meta-pill"><span>目标</span><strong>企业级 · 好落地 · AI 齐全 · 成本较小</strong></div>
+            </div>
+            <div class="callout">建议路径：数据平面只建一套。企业级应用用方案 B（Spring Boot 3 模块化单体）。需要先跑通规则时用方案 C（React + Node.js，同一套库）。客户已经购买 Microsoft 365 时，方案 A 只负责收文件和发通知，不保存租金账。</div>
+            <div class="card">
+                <h3>V1.2 的十个问题，以及 V1.3 的改法</h3>
+                <input class="search" id="issue-search" type="search" placeholder="搜索编号、问题或改法" aria-label="搜索问题">
+                <p class="empty-note" id="issue-empty">没有匹配的问题。</p>
+                <div class="table-wrap">
+                    <table id="issue-table">
+                        <thead><tr><th>编号</th><th>V1.2 的问题</th><th>落到项目上</th><th>V1.3 的改法</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td>P-01</td>
+                                <td>三个方案都没有离开 Azure。账本是 Azure SQL，批处理是 Functions 或 ADF，身份是 Entra ID，文件是 Blob。</td>
+                                <td>换前端或后端，订阅、区域和按量账单还在。离开其中一个方案，不等于离开 Azure。</td>
+                                <td>应用可以在 A、B、C 之间选择。数据平面只有一套，部署在客户机房或已有私有云，不调用 Azure 服务。</td>
+                            </tr>
+                            <tr>
+                                <td>P-02</td>
+                                <td>租售比和应付租金可能在 Dataverse、Azure SQL、Databricks 或 ClickHouse 里各算一次。</td>
+                                <td>同一家店两个数字。月结对不上时无法判断以哪张表为准。</td>
+                                <td>应付租金只由租金引擎写入 PostgreSQL。租售比、预警等级和 69 列店览只在 dbt 里定义一次，结果放 ClickHouse。</td>
+                            </tr>
+                            <tr>
+                                <td>P-03</td>
+                                <td>合同解析指向 Azure AI Document Intelligence，技术问答仍在讨论 Azure OpenAI。</td>
+                                <td>BRD 已说明公有模型会泄密，也会抽错金额。合同离开公司网络。</td>
+                                <td>原件进客户机房的 MinIO。PaddleOCR 加本机 vLLM / Qwen2.5。低置信度字段必须人工确认。在约 30 份真实合同试过之前，不承诺 95%。</td>
+                            </tr>
+                            <tr>
+                                <td>P-04</td>
+                                <td>Power Automate 承担审批和计算触发，流的运行历史被当成过程记录。</td>
+                                <td>流历史保存不了合同修订永久、租金参数 5 年、对账 10 年。Premium 另计费。1000 家店不能写进一条流的循环。</td>
+                                <td>审批状态在应用里走完：草稿、审批中、生效、变更。账和审计在 PostgreSQL。已有 M365 时，流只投递文件和调用接口。</td>
+                            </tr>
+                            <tr>
+                                <td>P-05</td>
+                                <td>分析库没有选定。T-07 仍是问句，正文同时出现 ClickHouse、Databricks 和 Azure SQL。</td>
+                                <td>店览 69 列没有落点，后续每加一张报表都要重新选工具。</td>
+                                <td>分析库定为 ClickHouse。节奏是 T+1 和月结，不做毫秒级实时。</td>
+                            </tr>
+                            <tr>
+                                <td>P-06</td>
+                                <td>历史依赖 SQL Server 时态表。</td>
+                                <td>一旦换数据库，合同变更和关账轨迹要重做。</td>
+                                <td>合同与租金参数用 valid_from、valid_to。审计表只追加，并记录前一条哈希。应用账号不能删除审计行和已关账月份。</td>
+                            </tr>
+                            <tr>
+                                <td>P-07</td>
+                                <td>部署区域绑在 Azure 全球或世纪互联，跨境是开放风险，也是费用项。</td>
+                                <td>选区域本身就要单独评估订阅、延迟和数据出境。</td>
+                                <td>默认放在客户机房或客户已经在用的私有云。合同文件不出该环境。是否跨境交给法务，不再默认上公有云。</td>
+                            </tr>
+                            <tr>
+                                <td>P-08</td>
+                                <td>识别按页、模型按 token、数仓按仓库时长、数据库按 vCore 计费。</td>
+                                <td>门店和合同一多，账单随用量涨，和功能是否用满无关。</td>
+                                <td>PostgreSQL、ClickHouse、dbt、Airflow、MinIO、Superset、Keycloak、OpenBao、Grafana 无软件许可证费。费用变成机器、磁盘和运维。OCR 可先用 CPU，批量上来再加推理卡。本稿不报单价。</td>
+                            </tr>
+                            <tr>
+                                <td>P-09</td>
+                                <td>正文引用 MaxMara_Requirement_media 下的四张架构图，附件里没有这些文件。</td>
+                                <td>打开 V1.2 时架构图是断的。</td>
+                                <td>V1.3 的图都写在页面里，用 mermaid 画出，不再外链缺失的图片。</td>
+                            </tr>
+                            <tr>
+                                <td>P-10</td>
+                                <td>验收标准在 PRD 和 BRD 里互相打架，V1.2 把它们同时写进不同组件。</td>
+                                <td>500 店 10 秒和 1000 店 2 小时、4 个模型和 10 个以上模型、租售比 25% 和 30%，会做成两套逻辑。</td>
+                                <td>批处理按 1000 家店、2 小时。一期五个模型。租售比先按 BRD，待财务用近 12 个月数据签字。缺销售标成数据异常，不算业务预警。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card">
+                <h3>改进时守住的六件事</h3>
+                <ul class="plain">
+                    <li>一套数据平面。方案 A、B、C 只换办理界面和审批入口，不换账本。</li>
+                    <li>合同、账单、密钥留在客户环境。抽取模型也留在同一环境。</li>
+                    <li>Gold 口径只写在 dbt。应用和报表都读结果，不各自写公式。</li>
+                    <li>租金引擎无界面、先有测试向量，以后可以从 Node.js 迁到 Java，或反向，测试用例跟着走。</li>
+                    <li>关账月份不可覆盖。失败重跑只处理未关账月份。</li>
+                    <li>AI 做抽取、检索和文字说明。金额以规则引擎和人工确认为准。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="overview" class="tab-content">
+            <p class="subtitle" style="margin-bottom:4px;">MAX MARA - SWO</p>
+            <h1>零售门店经营智能平台方案</h1>
+            <p class="subtitle">V1.3 更新稿。在 V1.2 的三个方案、技术问答、业务问答和店览要点上，换掉 Azure 数据与 AI 组件。</p>
+            <div class="meta-row">
+                <div class="meta-pill"><span>版本</span><strong>V1.3（架构确认稿）</strong></div>
+                <div class="meta-pill"><span>日期</span><strong>2026-10-31</strong></div>
+                <div class="meta-pill"><span>编制依据</span><strong>V1.2、BRD、PRD、Storemaster.xlsx</strong></div>
+                <div class="meta-pill"><span>本稿不做</span><strong>18 周全国上线建设</strong></div>
+            </div>
+            <div class="callout">企业级走方案 B。数据工具箱三案共用：PostgreSQL 16 做账，ClickHouse 做店览，dbt 定口径，Airflow 做 T+1，MinIO 存合同，PaddleOCR 与本机 Qwen 做抽取，Superset 出报表，Keycloak 或现有目录登录，OpenBao 管密钥。现有的 React + Access 原型只用来走通 13 步，不作为生产架构。</div>
+            <div class="callout warn">PRD 的 18 周从架构书面确认之后起算。抽取准确率和对账一致率，等约 30 份真实合同试过再写进验收，本稿不写 95% 和 100%。</div>
+            <h2>按方案进入</h2>
+            <div class="plan-grid">
+                <article class="plan-card recommend" data-tab="plan-b">
+                    <span class="tag tag-green">方案 B · 推荐</span>
+                    <h3>企业级</h3>
+                    <p>Spring Boot 3 里四个模块：合同、租金、预警、对账。审计、关账、行级权限在同一套 PostgreSQL。</p>
+                </article>
+                <article class="plan-card" data-tab="plan-c">
+                    <span class="tag tag-orange">方案 C</span>
+                    <h3>快速交付</h3>
+                    <p>React + Node.js 先把租金顺序和 Gold 跑通。数据库用同一套 PostgreSQL 和 ClickHouse，不用 Access。</p>
+                </article>
+                <article class="plan-card" data-tab="plan-a">
+                    <span class="tag tag-blue">方案 A · 可选</span>
+                    <h3>已有 M365 时的通知</h3>
+                    <p>SharePoint 收商场文件，Power Automate 调用接口、发 Teams。不在 Dataverse 里算租金。</p>
+                </article>
+            </div>
+            <div class="card">
+                <h3>功能落在哪一层</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>能力</th><th>一期放在哪里</th><th>AI 参与方式</th></tr></thead>
+                        <tbody>
+                            <tr><td>合同入库与字段抽取</td><td>MinIO + PaddleOCR + 本机 Qwen + 人工确认</td><td>抽取。低置信度停住，人不确认不进租金规则</td></tr>
+                            <tr><td>相似条款检索</td><td>PostgreSQL pgvector</td><td>只检索本公司已确认条款，辅助复核</td></tr>
+                            <tr><td>月租计算</td><td>租金引擎，结果进 PostgreSQL</td><td>不参与金额</td></tr>
+                            <tr><td>商场账单核对</td><td>一份标准 Excel，对账模块</td><td>差异说明可以用模型写文字，金额以规则为准</td></tr>
+                            <tr><td>预警</td><td>dbt 计算等级，应用推送待办</td><td>规则先于模型。缺销售是数据异常</td></tr>
+                            <tr><td>69 列店览</td><td>ClickHouse + Superset</td><td>不在报表里重新发明口径</td></tr>
+                            <tr><td>续租、闭店讨论</td><td>店览上的 Keep 决策字段</td><td>一期提供数，不自动下关闭决定</td></tr>
+                            <tr><td>预测</td><td>二期。一期可导入预算列</td><td>不承诺预测准确率</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="data" class="tab-content">
+            <h2>数据工具箱</h2>
+            <div class="card">
+                <p>三个应用方案共用下面这一套。换方案时搬走的是界面和接口语言，不是数据库、不是口径、不是合同文件。</p>
+                <div class="mermaid-container">
+                    <pre class="mermaid">
+flowchart TB
+  subgraph inb [客户机房内的进入]
+    contract["合同 PDF / 扫描件"] --> minio["MinIO 原件"] --> ocr["PaddleOCR"] --> qwen["本机 Qwen"] --> human["人工确认"]
+    dw["销售 DW 只读 T+1"] --> airflow["Airflow"]
+  end
+  mall["商场标准 Excel"] --> pg["PostgreSQL 16 账本"]
+  later["ERP / HR 二期 Excel 导入"] --> pg
+  human --> pg
+  airflow --> pg
+  pg --> app["合同、租金、预警、对账"]
+  pg --> dbt["dbt 口径"] --> ch["ClickHouse Gold"] --> bi["Superset 店览"]
+                    </pre>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>职责</th><th>工具</th><th>在这套方案里做什么</th></tr></thead>
+                        <tbody>
+                            <tr><td>业务账本</td><td>PostgreSQL 16</td><td>门店、合同、已确认字段、月度录入、销售、租金账单、商场账单、对账、付款申请、流程状态、审计。行级权限按区域和门店。</td></tr>
+                            <tr><td>历史与审计</td><td>valid_from / valid_to + 只追加哈希链</td><td>合同修订长期保留。租金参数保留 5 年并记下变更前后哈希。对账保留 10 年且不可物理删除。预警保留 1 年，登录保留 6 个月。</td></tr>
+                            <tr><td>分析与店览</td><td>ClickHouse</td><td>门店月销售、应付租金、租售比、预警等级、69 列店览。T+1 与月结，不做毫秒级实时。</td></tr>
+                            <tr><td>口径</td><td>dbt-core</td><td>Gold 模型只写这一处。含税、不含税、缺数、关账月份都在模型里说明。</td></tr>
+                            <tr><td>调度</td><td>Apache Airflow</td><td>每天从 DW 只读抽取。与月结任务分开发布，避免数仓改动挡住关账。</td></tr>
+                            <tr><td>文件</td><td>MinIO</td><td>合同和商场文件。S3 接口，放在客户网络内。</td></tr>
+                            <tr><td>识别与抽取</td><td>PaddleOCR，vLLM，Qwen2.5</td><td>14B 起步，字段多再评估 32B。GPU 不是一期前提，CPU 可先做 OCR。原文不出环境。</td></tr>
+                            <tr><td>条款检索</td><td>pgvector</td><td>向量跟账本在同一个 PostgreSQL，不另建搜索云。</td></tr>
+                            <tr><td>报表</td><td>Apache Superset</td><td>店览和月报。读 ClickHouse，不把口径写进图表。</td></tr>
+                            <tr><td>身份</td><td>Keycloak，或现有 AD / LDAP 的 OIDC</td><td>营运看本区域，店长看本店，财务看法人，高管看全局。保底租金和净利润对非财务脱敏。</td></tr>
+                            <tr><td>密钥</td><td>OpenBao</td><td>数据库口令、对象存储密钥、模型服务地址。不进代码仓库。</td></tr>
+                            <tr><td>观测</td><td>Prometheus、Grafana、Loki</td><td>批处理时长、失败月份、接口错误。日志留在客户环境。</td></tr>
+                            <tr><td>运行与发布</td><td>Docker Compose 或 k3s，GitHub Actions</td><td>开发、测试、生产三套。仓库已在 GitHub，流水线不改到 Azure DevOps。</td></tr>
+                            <tr><td>备份</td><td>pgBackRest，ClickHouse backup</td><td>可用性靠主库加副本和恢复演练。不靠公有云 SLA 标签。目标 99.9% 要在两节点布局确认后才写进承诺。</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <h3>从数据源到决策</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>数据源</th><th>处理</th><th>计算</th><th>输出</th></tr></thead>
+                        <tbody>
+                            <tr><td>合同 PDF / 扫描件</td><td>OCR、本地模型、人工确认</td><td>租金引擎。一期五个模型，可回溯</td><td>单店租金与租售比</td></tr>
+                            <tr><td>POS / DW 日或月销售</td><td>Airflow 只读进入 PostgreSQL，dbt 统一口径</td><td>月度账单</td><td>续租、改造、关闭讨论用的店览</td></tr>
+                            <tr><td>ERP / HR</td><td>一期不接核心系统。损益先含租金相关成本，其余可 Excel 导入</td><td>预算列可导入。预测放二期</td><td>红橙黄灯，T+1</td></tr>
+                            <tr><td>商场账单</td><td>一期一份标准 Excel</td><td>逐项比对，差异留分类</td><td>接受或争议，再进入付款申请</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <h3>租金顺序</h3>
+                <p>与月结流程图一致，系统轨迹使用同样的步骤名：是否免租，当月模型，固定租金、销售额、扣点，取高或取低，物业、推广、水电，扣补贴，增值税。</p>
+                <ul class="plain">
+                    <li>免租月份只要与免租区间重叠，整月基础租金为 0，不做半月折算。物业默认仍计，除非合同写明免除。</li>
+                    <li>扣点租金 = 销售额 × 扣点。两者取高取较大值，两者取低取较小值。</li>
+                    <li>增值税默认 9%，税基为 max(0, 基础租金 + 附加 − 补贴)。财务另有口径时改这一处参数。</li>
+                    <li>租售比用不含税净额。建议阈值：大于 25% 红，20% 至 25% 橙，15% 至 20% 黄。保底销售达成低于 80% 红，低于 90% 橙。</li>
+                    <li>一期模型：两者取高、两者取低、纯固定、纯扣点、保底加超额。阶梯和封顶看在营合同占比再定。不按“10 个以上模型”排期。</li>
+                    <li>没有销售数据时标记为数据异常，不发业务红灯。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="plan-b" class="tab-content">
+            <h2>方案 B · 企业级推荐</h2>
+            <div class="card">
+                <p>PRD 里的店铺合同、租金、预警、对账放在同一个 Spring Boot 3 应用的四个模块里，不拆成微服务。数据用上一节的工具箱。这是要长期跑月结、留审计、做权限时的选择。</p>
+                <div class="mermaid-container">
+                    <pre class="mermaid">
+flowchart TB
+  id["身份：Keycloak 或现有 AD / LDAP · 区域与门店行级权限"]
+  ui["界面：React + TypeScript"]
+  api["应用：Spring Boot 3 · 一个进程四个模块"]
+  m1["合同"]
+  m2["租金 · 无界面 · 先写测试"]
+  m3["预警"]
+  m4["对账"]
+  pg["PostgreSQL：账单、状态、审计 · 关账不可覆盖"]
+  ch["ClickHouse：dbt 写入的 Gold"]
+  file["MinIO + PaddleOCR + 本机 Qwen · 低置信度人工确认"]
+  sec["OpenBao 管密钥"]
+  id --> ui --> api
+  api --> m1
+  api --> m2
+  api --> m3
+  api --> m4
+  m2 --> pg
+  m4 --> pg
+  file --> m1
+  pg --> ch
+  sec --> api
+                    </pre>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>层</th><th>技术明细</th><th>工具</th></tr></thead>
+                        <tbody>
+                            <tr><td>界面</td><td>React + TypeScript。13 步办理顺序保留。组件库按客户视觉再定，不绑定 Fluent 或 Teams。</td><td>Vite、Visual Studio Code、Playwright</td></tr>
+                            <tr><td>应用</td><td>Spring Boot 3，Java 21。模块：合同、租金、预警、对账。租金模块无界面，测试向量先于接口。</td><td>IntelliJ IDEA 或 VS Code、Maven 或 Gradle</td></tr>
+                            <tr><td>账本</td><td>PostgreSQL 16。valid_from / valid_to。审计只追加。应用账号不能删除已关账月份。</td><td>psql、迁移脚本放在仓库</td></tr>
+                            <tr><td>批处理</td><td>同一套引擎由应用内调度按月、按区域分批。Airflow 负责把销售准备好。失败重跑不覆盖已关账月份。验收：1000 家店在 2 小时内算完。</td><td>Spring 调度、Airflow</td></tr>
+                            <tr><td>身份</td><td>OIDC。角色加数据范围。保底租金、净利润对非财务脱敏。</td><td>Keycloak，或客户现有目录</td></tr>
+                            <tr><td>文件与识别</td><td>MinIO。PaddleOCR 异步抽取，Qwen 填字段，低置信度停在人工复核。向量检索用 pgvector。</td><td>OpenBao、vLLM</td></tr>
+                            <tr><td>报表</td><td>Superset 读 ClickHouse。口径在 dbt。</td><td>Superset、dbt</td></tr>
+                            <tr><td>流程状态</td><td>草稿、审批中、生效、变更。写在 PostgreSQL，不写在外部流里。</td><td>应用内状态机</td></tr>
+                            <tr><td>运行</td><td>开发机 Docker Compose。生产 k3s 或客户已有的 Kubernetes。三套环境。</td><td>GitHub Actions</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p><button class="linkish" data-tab="compare">查看利弊与成本</button></p>
+            </div>
+        </section>
+
+        <section id="plan-c" class="tab-content">
+            <h2>方案 C · 快速交付</h2>
+            <div class="card">
+                <p>用 React 和 Node.js 先把 13 步、租金顺序和 Gold 口径跑在正式数据工具箱上。适合架构确认后的第一段可运行系统。生产账本仍然是 PostgreSQL，不是 Access，也不是 Azure SQL。</p>
+                <div class="mermaid-container">
+                    <pre class="mermaid">
+flowchart TB
+  id["身份：同一套 Keycloak / OIDC"]
+  tx["交易：React + Node.js"]
+  rent["租金模块：纯函数 · 与方案 B 共用测试向量"]
+  pg["PostgreSQL 账本"]
+  gold["dbt 到 ClickHouse：月销售、应付租金、租售比、预警等级"]
+  edge["通知：邮件或已有 M365 的传入 Webhook · 不在流里算钱"]
+  id --> tx --> rent --> pg
+  pg --> gold
+  gold --> edge
+                    </pre>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>层</th><th>技术明细</th><th>工具</th></tr></thead>
+                        <tbody>
+                            <tr><td>交易系统</td><td>React 19 + Vite + Node.js。接口按 13 步顺序校验，跳步拒绝。原型里的租金顺序可以迁过来，Access 文件不迁。</td><td>Visual Studio Code</td></tr>
+                            <tr><td>账本与指标</td><td>PostgreSQL 写入账单。dbt 生成 Gold：门店月销售、应付租金、租售比、预警等级。口径只定义一次。</td><td>PostgreSQL、dbt、ClickHouse</td></tr>
+                            <tr><td>同步</td><td>Airflow，T+1。销售从 DW 只读进入。缺销售标成数据异常。月结作业与数仓作业分开发布。</td><td>Airflow</td></tr>
+                            <tr><td>识别</td><td>与方案 B 相同的 MinIO、PaddleOCR、本机 Qwen。不因为“先做一版”就把合同送到公有模型。</td><td>vLLM、OpenBao</td></tr>
+                            <tr><td>边缘通知</td><td>待办先在应用内。客户已有 Teams 或邮件网关时再接通知。流里只传合同号和月份。</td><td>可选的 Power Automate 或邮件</td></tr>
+                            <tr><td>身份</td><td>与方案 B 同一套 OIDC 和行级权限，避免以后迁移时重做账号。</td><td>Keycloak 或现有目录</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>从方案 C 收到方案 B 时，保留 PostgreSQL 表、dbt 模型、MinIO 桶、测试向量和已确认的合同字段。重写的是 API 进程。</p>
+                <p><button class="linkish" data-tab="compare">查看利弊与成本</button></p>
+            </div>
+        </section>
+
+        <section id="plan-a" class="tab-content">
+            <h2>方案 A · 已有 Microsoft 365 时的可选边缘</h2>
+            <div class="card">
+                <p>只有客户已经在为 Microsoft 365 付费、并且拓展和财务希望待办留在 Teams 里时，才加这一层。它不拥有账本，不重算租金，不代替审计。</p>
+                <div class="mermaid-container">
+                    <pre class="mermaid">
+flowchart TB
+  user["拓展 / 财务"]
+  sp["SharePoint：商场标准 Excel 投递"]
+  flow["Power Automate：新文件或审批结果"]
+  api["方案 B 或 C 的接口 · 只接收合同号和月份"]
+  pg["PostgreSQL 账本 · 唯一金额来源"]
+  teams["Teams 或邮件：待办通知"]
+  user --> sp --> flow --> api --> pg
+  pg --> api --> teams
+                    </pre>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>层</th><th>可以放在 M365 的</th><th>必须留在数据工具箱的</th></tr></thead>
+                        <tbody>
+                            <tr><td>文件入口</td><td>SharePoint 作为投递区</td><td>归档副本进 MinIO，权限与合同库一致</td></tr>
+                            <tr><td>待办</td><td>Teams 自适应卡片、审批结果回写</td><td>状态机在 PostgreSQL：草稿、审批中、生效、变更</td></tr>
+                            <tr><td>计算</td><td>流只调用接口</td><td>租金引擎、1000 店批处理、对账差额</td></tr>
+                            <tr><td>账</td><td>Power Apps 如需保留，只读接口</td><td>账单、轨迹、审计。不进 Dataverse</td></tr>
+                            <tr><td>身份</td><td>可继续用客户已有的 Entra 账号登录 M365</td><td>应用权限仍以 OIDC 角色和行级策略为准。M365 登录不等于数据权限</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p>客户没有 M365 时，这一方案整段不做。应用内待办和邮件足够覆盖一期。</p>
+                <p><button class="linkish" data-tab="compare">查看利弊与成本</button></p>
+            </div>
+        </section>
+
+        <section id="compare" class="tab-content">
+            <h2>利弊与成本</h2>
+            <div class="callout">三案比较的是办理方式，不是三套数据平台。账、口径、文件、模型和密钥都在同一工具箱。成本差主要来自要不要保留 M365 流程，以及第一期用 Node.js 还是直接用 Java。</div>
+            <div class="card">
+                <h3>边界</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>方案</th><th>适合</th><th>守住的边界</th><th>主要代价</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td><button class="linkish" data-tab="plan-b">方案 B</button></td>
+                                <td>要长期月结、审计和权限的生产系统</td>
+                                <td>一个 Spring Boot 应用四个模块。1000 店、2 小时用批处理完成。关账不可覆盖。</td>
+                                <td>第一版比 Node.js 慢一些。团队需要 Java。</td>
+                            </tr>
+                            <tr>
+                                <td><button class="linkish" data-tab="plan-c">方案 C</button></td>
+                                <td>先把规则跑通，并保留迁到方案 B 的数据</td>
+                                <td>同一 PostgreSQL、同一 dbt、同一 MinIO。Access 不进入此方案。</td>
+                                <td>若长期停留在 Node.js，大型批处理和严格审计要靠同一套库约束，不能靠脚本补。</td>
+                            </tr>
+                            <tr>
+                                <td><button class="linkish" data-tab="plan-a">方案 A</button></td>
+                                <td>M365 已经买了，只想少做一个收件箱</td>
+                                <td>不重算、不入 Dataverse、不循环 1000 店。流历史不是审计。</td>
+                                <td>多一个需要维护的边缘。没有 M365 就不要为它新购 Premium。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <h3>费用从哪里下来</h3>
+                <p>下表只说明计费方式的变化，不报许可证单价。机器、磁盘、实施人天仍然存在，需在环境确认后单列。</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>项目</th><th>V1.2 会持续发生的账单</th><th>V1.3</th></tr></thead>
+                        <tbody>
+                            <tr><td>业务库</td><td>Azure SQL 按 vCore</td><td>客户虚机上的 PostgreSQL，无数据库许可证</td></tr>
+                            <tr><td>集成与调度</td><td>ADF 按活动运行</td><td>Airflow，软件无许可证</td></tr>
+                            <tr><td>合同识别</td><td>Document Intelligence 按页</td><td>PaddleOCR。先 CPU，量大再加自有 GPU</td></tr>
+                            <tr><td>抽取模型</td><td>Azure OpenAI 按 token</td><td>本机 Qwen2.5，费用是电和机器</td></tr>
+                            <tr><td>店览</td><td>Power BI Pro，或 Databricks SQL 仓库时长</td><td>ClickHouse + Superset</td></tr>
+                            <tr><td>批处理</td><td>Azure Functions 按执行</td><td>应用内调度</td></tr>
+                            <tr><td>审批</td><td>Power Automate Premium</td><td>应用内状态机。已有 M365 才保留通知</td></tr>
+                            <tr><td>身份与密钥</td><td>Entra ID、Key Vault</td><td>Keycloak 或现有目录，OpenBao</td></tr>
+                            <tr><td>观测</td><td>Application Insights</td><td>Prometheus、Grafana、Loki</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <h3>仍然要花的</h3>
+                <ul class="plain">
+                    <li>三套环境的虚机、磁盘和备份空间。</li>
+                    <li>若合同批量大，一张推理卡。没有卡也可以先做 OCR 和规则。</li>
+                    <li>DW 只读账号、标准 Excel 样张、权限矩阵，这些要客户提供。</li>
+                    <li>实施和运维人天。本稿不把人天写成报价。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="tools" class="tab-content">
+            <h2>V1.2 到 V1.3 的工具对照</h2>
+            <div class="card">
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>V1.2</th><th>V1.3</th><th>它负责什么</th></tr></thead>
+                        <tbody>
+                            <tr><td>Azure SQL / SQL VM</td><td>PostgreSQL 16</td><td>合同、账单、对账、流程、审计</td></tr>
+                            <tr><td>SQL Server 时态表</td><td>valid_from / valid_to + 哈希链</td><td>变更可回溯，不绑定一家数据库</td></tr>
+                            <tr><td>Azure Data Factory</td><td>Apache Airflow</td><td>T+1 只读抽取</td></tr>
+                            <tr><td>未选定的 ClickHouse 或 Databricks</td><td>ClickHouse + dbt-core</td><td>Gold 与 69 列店览，口径只写一次</td></tr>
+                            <tr><td>Azure Blob</td><td>MinIO</td><td>合同与商场原件</td></tr>
+                            <tr><td>Document Intelligence / Azure OpenAI</td><td>PaddleOCR + vLLM + Qwen2.5</td><td>私有抽取，低置信度人工确认</td></tr>
+                            <tr><td>单独的 AI 搜索服务</td><td>pgvector</td><td>相似条款，仍在 PostgreSQL 内</td></tr>
+                            <tr><td>Entra ID 作为应用权限</td><td>Keycloak 或现有 AD / LDAP 的 OIDC</td><td>登录、角色、数据范围</td></tr>
+                            <tr><td>Key Vault</td><td>OpenBao</td><td>密钥</td></tr>
+                            <tr><td>Power BI</td><td>Apache Superset</td><td>店览与月报</td></tr>
+                            <tr><td>Azure Functions 批处理</td><td>应用内调度 + Airflow</td><td>1000 店分批，不覆盖关账月</td></tr>
+                            <tr><td>Power Automate 作为主流程</td><td>应用内状态机；M365 仅可选通知</td><td>草稿到变更</td></tr>
+                            <tr><td>Application Insights</td><td>Prometheus + Grafana + Loki</td><td>指标与日志</td></tr>
+                            <tr><td>App Service / Azure DevOps</td><td>Docker Compose 或 k3s + GitHub Actions</td><td>三环境发布</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="tech" class="tab-content">
+            <h2>技术问答</h2>
+            <div class="card">
+                <h3>V1.3 对 V1.2 技术问句的回答</h3>
+                <p class="subtitle">标成「待确认」的仍要客户书面答复。其余行是本稿的选型，用来替换 V1.2 里指向 Azure 的问句。</p>
+                <input class="search" id="tech-search" type="search" placeholder="搜索编号、层次、选型或理由" aria-label="搜索技术问答">
+                <p class="empty-note" id="tech-empty">没有匹配的技术条目。</p>
+                <div class="table-wrap">
+                    <table id="tech-table">
+                        <thead><tr><th>编号</th><th>层次</th><th>V1.3 建议</th><th>理由</th></tr></thead>
+                        <tbody>
+                            <tr><td>T-01</td><td>本期交付形态</td><td>架构确认 + 可运行验证。不进入 18 周全国建设。</td><td>规则、数据工具箱和验收口径先签字。18 周从签字日开始算。</td></tr>
+                            <tr><td>T-02</td><td>部署区域</td><td>客户机房或已有私有云。不使用 Azure 全球或世纪互联。跨境仍待法务确认。</td><td>去掉区域订阅这个变量。合同默认不出该环境。</td></tr>
+                            <tr><td>T-03</td><td>合同与模型</td><td>不允许合同进入公有 LLM。使用 PaddleOCR 与本机 Qwen。</td><td>对齐 BRD 对泄密和抽错金额的提示。</td></tr>
+                            <tr><td>T-04</td><td>前端</td><td>React + Vite。13 步顺序保留。方案 B 使用 TypeScript。</td><td>现有原型已按泳道走通，生产沿用办理顺序，不沿用 Access。</td></tr>
+                            <tr><td>T-05</td><td>后端</td><td>推荐 Spring Boot 3 模块化单体。方案 C 可用 Node.js。租金是无界面纯模块。不采用微服务清单。</td><td>四个模块同一进程，测试向量可以在 Java 和 JavaScript 之间对照。</td></tr>
+                            <tr><td>T-06</td><td>数据平台现状</td><td>不再以 Fabric、Databricks、Synapse 为前提。OLTP 用 PostgreSQL。客户若已有 DW，只读抽取。DW 产品名待确认。</td><td>兼容性变成“给一个只读账号”，而不是“必须已有某一家云数仓”。</td></tr>
+                            <tr><td>T-07</td><td>分析数据库</td><td>定为 ClickHouse。承接 Gold 和 69 列。T+1 与月结。</td><td>店览是读多写少的宽表，不放回账本库里临时汇总。</td></tr>
+                            <tr><td>T-08</td><td>身份与权限</td><td>Keycloak，或现有 AD / LDAP 通过 OIDC。RBAC 加区域、品牌、门店、法人范围。</td><td>BRD 已要求隔离和审批。不把 Entra ID 当成唯一入口。</td></tr>
+                            <tr><td>T-09</td><td>合同识别</td><td>私有化 OCR 加本地模型加人工确认。约 30 份真实合同之前不承诺准确率。</td><td>公有模型和未经验证的百分比都不写进合同。</td></tr>
+                            <tr><td>T-10</td><td>租金模型（一期）</td><td>两者取高、两者取低、纯固定、纯扣点、保底加超额。阶梯和封顶视占比。</td><td>按在营合同数量排序，不按模型名词数量排序。</td></tr>
+                            <tr><td>T-11</td><td>租售比阈值</td><td>建议先按 BRD：大于 25% 红，20%–25% 橙，15%–20% 黄。用不含税净额。待财务用近 12 个月数据签字。</td><td>PRD 的大于 30% 更松，上线前只留一套。</td></tr>
+                            <tr><td>T-12</td><td>计算口径</td><td>顺序固定。免租按整月。物业默认不免。增值税默认 9%。用 5 份合同手算钉死例外。</td><td>流程图已经是业务语言，轨迹要和它同名。</td></tr>
+                            <tr><td>T-13</td><td>销售与主数据</td><td>DW 只读、T+1，经 Airflow 进入 PostgreSQL，再由 dbt 进入 ClickHouse。日结时点、时区、退货、联营待写成接口说明。</td><td>预警和租金都依赖销售。抽取作业与月结分开发布。</td></tr>
+                            <tr><td>T-14</td><td>商场账单</td><td>一期一份标准 Excel：基础租金、扣点、物业、推广、水电、刷卡费、代垫、合计。</td><td>非标 PDF 全量识别的成本高一个数量级，BRD 标成待确认。</td></tr>
+                            <tr><td>T-15</td><td>批处理验收</td><td>1000 家店在 2 小时内算完。报表 3 秒只覆盖已经点名的那几张。</td><td>不把 PRD 的 500 店小于 10 秒同时当成验收。</td></tr>
+                            <tr><td>T-16</td><td>环境与密钥</td><td>开发、测试、生产三套。Compose 或 k3s。密钥在 OpenBao。合同文件与数据库分开授权。</td><td>原型所在的开发机不是生产环境。</td></tr>
+                            <tr><td>T-17</td><td>预警类型</td><td>规则引擎产出待处理、亏损、连续亏损、闭店讨论，以及客户样本里的其他类型。欺诈规则单独确认后再生效。</td><td>先对齐客户给出的样本，再加模型说明。</td></tr>
+                            <tr><td>T-18</td><td>店览</td><td>Superset 数据集，列由 dbt 生成。69 列每一列的来源系统仍待客户逐列指认。</td><td>表头已经有了，行数据和来源还没有。</td></tr>
+                            <tr><td>T-19</td><td>脱敏</td><td>PostgreSQL 行级策略加脱敏视图。保底租金、净利润、薪资、合同金额默认对非财务隐藏。矩阵待客户提供。</td><td>没有矩阵之前，开发环境用样本角色，不把真实薪资放进共享库。</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="biz" class="tab-content">
+            <h2>业务问答</h2>
+            <div class="card">
+                <h3>仍要客户确认的问题，以及本稿先采用的立场</h3>
+                <input class="search" id="biz-search" type="search" placeholder="搜索编号、问题或出处" aria-label="搜索业务问答">
+                <p class="empty-note" id="biz-empty">没有匹配的业务条目。</p>
+                <div class="table-wrap">
+                    <table id="biz-table">
+                        <thead><tr><th>编号</th><th>问题</th><th>本稿立场</th><th>需求出处</th></tr></thead>
+                        <tbody>
+                            <tr><td>Q01</td><td>一期到底做哪些需求？</td><td>13 步办理、五个租金模型、标准 Excel 对账、规则预警、店览框架。ERP/HR 直连和预测放后面。</td><td>BRD 的 Must / Should；PRD 第 5、7 章</td></tr>
+                            <tr><td>Q02</td><td>店览 69 列的数从哪个系统来？</td><td>待确认。先建 Gold 表结构，来源不明的列保持空，不编数。</td><td>Storemaster.xlsx，仅有表头</td></tr>
+                            <tr><td>Q03</td><td>租售比红色线是 25% 还是 30%？</td><td>建议 25%，待财务用 12 个月数据签字。</td><td>PRD 写大于 30%；BRD 写大于 25%</td></tr>
+                            <tr><td>Q04</td><td>租金模型做 4 类还是 10 种以上？</td><td>一期五个，含两者取低。不承诺 10 种以上。</td><td>PRD 5.3；BRD REQ-02</td></tr>
+                            <tr><td>Q05</td><td>免租不足一个月、递增、增值税怎么算？</td><td>重叠即整月免基础租金。递增按合同生效日。增值税默认 9%。例外用手算确认。</td><td>PRD 流程图；BRD 租金节点</td></tr>
+                            <tr><td>Q06</td><td>销售和店铺主数据谁是源头？</td><td>销售以 DW 只读为准。主数据来源待确认。</td><td>BRD 集成：DW、POS</td></tr>
+                            <tr><td>Q07</td><td>ERP 和 HR 一期接不接？</td><td>不接核心系统。损益先含租金相关成本，其余允许 Excel 导入。</td><td>BRD 待确认</td></tr>
+                            <tr><td>Q08</td><td>商场账单是标准表还是各商场 PDF？</td><td>一期标准 Excel。非标 PDF 不进一期范围。</td><td>PRD 5.7；BRD 待确认</td></tr>
+                            <tr><td>Q09</td><td>合同扫描件能不能出公司？</td><td>不能进公有模型。原件留在 MinIO。</td><td>BRD 风险</td></tr>
+                            <tr><td>Q10</td><td>谁能看见保底租金、净利润和薪资？</td><td>默认仅财务和高管。精确矩阵待确认。</td><td>BRD 权限矩阵</td></tr>
+                            <tr><td>Q11</td><td>95% 抽取准确率何时承诺？</td><td>约 30 份真实合同试完再谈，本稿不承诺。</td><td>BRD 成功指标</td></tr>
+                            <tr><td>Q12</td><td>批量计算听 10 秒还是 2 小时？</td><td>按 1000 家店、2 小时。</td><td>PRD 与 BRD 冲突</td></tr>
+                            <tr><td>Q13</td><td>付款申请要不要写进 ERP？</td><td>一期停在付款申请和审批记录。写 ERP 待接口确认。13 步需要培训和签字。</td><td>第 13 步；BRD 结算审批</td></tr>
+                            <tr><td>Q14</td><td>合同变更和差异确认要不要审批流？</td><td>要。状态在应用内，不依赖 Power Automate。</td><td>BRD REQ-06</td></tr>
+                            <tr><td>Q15</td><td>移动端一期做不做？</td><td>不做独立 App。预警先在 Web。企微、钉钉、Teams 作为通知渠道待选。</td><td>BRD Should</td></tr>
+                            <tr><td>Q16</td><td>历史合同和历史月迁多少？</td><td>待确认。建议至少迁入未结束合同和近 12 个月，否则租售比没有对照。</td><td>上线与对账连续性</td></tr>
+                            <tr><td>Q17</td><td>18 周从哪一天开始算？</td><td>从本架构书面确认的次日开始，不从本稿日期开始。</td><td>PRD 里程碑</td></tr>
+                            <tr><td>Q18</td><td>门店规模、国家和业态？</td><td>待确认。批处理按 1000 家店准备。</td><td>范围</td></tr>
+                            <tr><td>Q19</td><td>预测的粒度和周期？</td><td>一期不做自动预测。可导入已有预算列。</td><td>Forecast</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="store" class="tab-content">
+            <h2>Storemaster.xlsx 要点</h2>
+            <div class="card">
+                <p>约 69 列，目前只有表头。V1.3 把这些列视为 ClickHouse 里的一张店览宽表，由 dbt 从已确认的来源填充。来源未确认的列保持空值，并在数据集里标明“待指认”。</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>分类</th><th>字段</th><th>一期数据从哪来</th></tr></thead>
+                        <tbody>
+                            <tr><td>门店属性</td><td>Brand、编号、Shop、Region、City、Rank、LTL、Landlord</td><td>主数据。来源系统待确认，可先由拓展维护</td></tr>
+                            <tr><td>租期与合同</td><td>Lease Ending Date、RTM、Last contract renewal、Contract Expiry、Min Sales、Min Rent、Turnover rent、Concession Commission Rate、PM Fee、Total Discount、Effective Rent 2025/2026</td><td>人工确认后的合同字段与租金引擎结果</td></tr>
+                            <tr><td>销售与利润</td><td>YTD Sales、vs LY、PY Sales、Annualized Sales/Selling sqm、OM、NPBT、预算 Sales/OM/NPBT</td><td>销售来自 DW。利润项在 ERP 未接前只展示已导入列</td></tr>
+                            <tr><td>面积与结构</td><td>GFA、GLA、Selling Area、Lease Structure</td><td>主数据或合同，待指认</td></tr>
+                            <tr><td>人员与成本</td><td>Total Staff Cost、Sales Staff、Productivity、Retail Marketing</td><td>一期不接 HR。有 Excel 才导入，否则为空</td></tr>
+                            <tr><td>装修与维护</td><td>上次装修日期与费用、类型、单位面积、维护日期与费用</td><td>待指认。不从模型生成</td></tr>
+                            <tr><td>会员</td><td>Active Members、VIC、Amber/Gold/Platinum/Diamond、Non-VIP</td><td>会员系统待确认。没有接口则为空</td></tr>
+                            <tr><td>运营评估</td><td>SM Rating、SM Tenure</td><td>待指认</td></tr>
+                            <tr><td>决策</td><td>Keep、Keep / Renovate / Relocate / Close、Action Date、5YP Plan</td><td>人填写。系统提供租金、销售和租售比，不自动改决策</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <footer class="page-foot">MAX MARA - SWO · 零售门店经营智能平台方案 · V1.3 · 2026-10-31 · 基准 V1.2 · 数据平面不再使用 Azure</footer>
+    </main>
+
+    <script>
+        var rendered = new Set();
+
+        function renderDiagrams(panel) {
+            if (!window.mermaid || !panel) return;
+            var pending = [];
+            panel.querySelectorAll("pre.mermaid").forEach(function (node) {
+                if (!rendered.has(node)) pending.push(node);
+            });
+            if (!pending.length) return;
+            mermaid.run({ nodes: pending }).then(function () {
+                pending.forEach(function (node) { rendered.add(node); });
+            }).catch(function () {});
+        }
+
+        function openTab(tabId) {
+            document.querySelectorAll(".tab-content").forEach(function (panel) {
+                panel.classList.remove("active");
+            });
+            document.querySelectorAll("[data-tab]").forEach(function (el) {
+                if (el.classList.contains("tab-btn") || el.tagName === "A") {
+                    el.classList.toggle("active", el.getAttribute("data-tab") === tabId);
+                }
+            });
+            var panel = document.getElementById(tabId);
+            if (panel) {
+                panel.classList.add("active");
+                renderDiagrams(panel);
+            }
+            if (location.hash !== "#" + tabId) history.replaceState(null, "", "#" + tabId);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function bindSearch(inputId, tableId, emptyId) {
+            var input = document.getElementById(inputId);
+            if (!input) return;
+            input.addEventListener("input", function () {
+                var q = input.value.trim().toLowerCase();
+                var shown = 0;
+                document.querySelectorAll("#" + tableId + " tbody tr").forEach(function (row) {
+                    var hit = row.innerText.toLowerCase().indexOf(q) !== -1;
+                    row.style.display = hit ? "" : "none";
+                    if (hit) shown += 1;
+                });
+                document.getElementById(emptyId).style.display = shown ? "none" : "block";
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            if (window.mermaid) {
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: "default",
+                    securityLevel: "strict",
+                    flowchart: { useMaxWidth: true, htmlLabels: true, curve: "basis" }
+                });
+            }
+            document.body.addEventListener("click", function (event) {
+                var trigger = event.target.closest("[data-tab]");
+                if (!trigger) return;
+                if (trigger.tagName !== "BUTTON" && trigger.tagName !== "A" && !trigger.classList.contains("plan-card")) return;
+                event.preventDefault();
+                openTab(trigger.getAttribute("data-tab"));
+            });
+            bindSearch("issue-search", "issue-table", "issue-empty");
+            bindSearch("tech-search", "tech-table", "tech-empty");
+            bindSearch("biz-search", "biz-table", "biz-empty");
+            var initial = (location.hash || "#issues").slice(1);
+            openTab(document.getElementById(initial) ? initial : "issues");
+        });
+    </script>
+</body>
+</html>
