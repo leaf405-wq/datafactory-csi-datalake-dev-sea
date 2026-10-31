@@ -1,6 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { listenHttp } from "./loopback.js";
 import { all, startAccess, stopAccess } from "./access.js";
 import { SAMPLE_CONTRACT } from "./parser.js";
 import { seedIfEmpty } from "./seed.js";
@@ -96,12 +97,11 @@ app.get(/^(?!\/api).*/, (_req, res) => {
 const port = Number(process.env.PORT || 3780);
 await startAccess();
 if ((await all("stores")).length === 0) await seedIfEmpty();
-const httpServer = app.listen(port, () => {
-  console.log(`store-ops http://127.0.0.1:${port}`);
-});
+const servers = await listenHttp(app, port);
+console.log(`store-ops http://127.0.0.1:${port}`);
 
 async function shutdown() {
-  httpServer.close();
+  await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))));
   await stopAccess();
   process.exit(0);
 }

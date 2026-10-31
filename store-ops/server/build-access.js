@@ -13,6 +13,7 @@ const jars = [
 
 const classFile = path.join(server, "classes", "com", "storeops", "AccessServer.class");
 const result = spawnSync("javac", [
+  "--release", "17",
   "-encoding", "UTF-8",
   "-cp", jars.join(path.delimiter),
   "-d", path.join(server, "classes"),
