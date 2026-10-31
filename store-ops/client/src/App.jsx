@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createApi, money } from "./api.js";
+import { Action, BUSY_HOLD_MS, WaitingCopy } from "./Action.jsx";
+import { CockpitPage, ForecastPage, MonitorPage, RentPage } from "./PrdPages.jsx";
 
 const ROLES = [
   { id: "expansion", label: "拓展部", actor: "拓展专员" },
@@ -15,9 +17,6 @@ const ACTOR = {
   mall: "商场方",
   system: "系统",
 };
-
-const BUSY_HOLD_MS = 1200;
-const DOT_STEPS = [1, 3, 6];
 
 export default function App() {
   const [role, setRole] = useState("expansion");
@@ -103,6 +102,10 @@ export default function App() {
           <button className={page === "home" ? "active" : "ghost"} onClick={() => setPage("home")}>经营首页</button>
           <button className={page === "contract" ? "active" : "ghost"} onClick={() => setPage("contract")}>新签合同</button>
           <button className={page === "stores" ? "active" : "ghost"} onClick={() => setPage("stores")}>店览宽表</button>
+          <button className={page === "rent" ? "active" : "ghost"} onClick={() => setPage("rent")}>租金引擎</button>
+          <button className={page === "forecast" ? "active" : "ghost"} onClick={() => setPage("forecast")}>盈利预测</button>
+          <button className={page === "monitor" ? "active" : "ghost"} onClick={() => setPage("monitor")}>每日预警</button>
+          <button className={page === "cockpit" ? "active" : "ghost"} onClick={() => setPage("cockpit")}>管理驾驶舱</button>
           <p className="meta" style={{ marginTop: 18 }}>
             当前身份 {actor}。泳道里的每一步只接受对应部门的操作，顺序不能跳。
           </p>
@@ -118,6 +121,10 @@ export default function App() {
           {data && page === "journey" ? (
             <Journey data={data} storeId={storeId} role={role} api={api} onRun={run} busyId={busyId} />
           ) : null}
+          {data && page === "rent" ? <RentPage api={api} onRun={run} busyId={busyId} /> : null}
+          {data && page === "forecast" ? <ForecastPage api={api} onRun={run} busyId={busyId} /> : null}
+          {data && page === "monitor" ? <MonitorPage api={api} /> : null}
+          {data && page === "cockpit" ? <CockpitPage api={api} /> : null}
         </main>
       </div>
     </div>
@@ -156,52 +163,6 @@ function Home({ data, onOpen }) {
         })}
       </div>
     </>
-  );
-}
-
-function WaitingCopy({ text, active }) {
-  const [step, setStep] = useState(0);
-
-  useEffect(() => {
-    if (!active) {
-      setStep(0);
-      return undefined;
-    }
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setStep(1);
-      return undefined;
-    }
-    const timer = window.setInterval(() => {
-      setStep((current) => (current + 1) % DOT_STEPS.length);
-    }, 360);
-    return () => window.clearInterval(timer);
-  }, [active]);
-
-  const shown = DOT_STEPS[step];
-  return (
-    <span className="wait-copy">
-      {text}
-      <span className="wait-dots" aria-hidden="true">
-        {Array.from({ length: 6 }, (_, index) => (
-          <span key={index} className={index < shown ? "on" : "off"}>.</span>
-        ))}
-      </span>
-    </span>
-  );
-}
-
-function Action({ id, busyId, pending, children }) {
-  const waiting = busyId === id;
-  return (
-    <span className={waiting ? "action is-busy" : "action"}>
-      {children}
-      <label className="action-status" htmlFor={id} aria-hidden={waiting ? "false" : "true"}>
-        <span>
-          <progress />
-          <WaitingCopy text={pending} active={waiting} />
-        </span>
-      </label>
-    </span>
   );
 }
 

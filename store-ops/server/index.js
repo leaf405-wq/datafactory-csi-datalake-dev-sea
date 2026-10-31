@@ -20,6 +20,7 @@ import {
   importContract,
   uploadContract,
 } from "./workflow.js";
+import { buildDesk, forecastStore, previewRent } from "./prd.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -53,6 +54,9 @@ function wrap(handler) {
 app.get("/api/health", wrap(async () => ({ ok: true, period: PERIOD })));
 app.get("/api/sample-contract", wrap(async () => ({ text: SAMPLE_CONTRACT })));
 app.get("/api/snapshot", wrap(async () => snapshot()));
+app.post("/api/rent/preview", wrap(async (req) => previewRent(req.body || {})));
+app.post("/api/forecast", wrap(async (req) => forecastStore(req.body || {})));
+app.get("/api/prd/desk", wrap(async () => buildDesk(await snapshot())));
 app.post("/api/contracts/import", wrap(async (req) => importContract({
   ...actor(req),
   filename: req.body.filename,
