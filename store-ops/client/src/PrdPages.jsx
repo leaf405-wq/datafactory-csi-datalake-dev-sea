@@ -383,7 +383,7 @@ export function CockpitPage({ api, period, months, accounting, onPeriod, MonthHi
             <div className="kpi"><strong>{desk.geo.length ? (desk.geoSummary.weightedAverageProfit == null ? "—" : money(desk.geoSummary.weightedAverageProfit)) : "—"}</strong><span>平均加权利润</span></div>
             <div className="kpi"><strong>{desk.geo.length ? money(desk.geoSummary.weightedNetProfit) : "—"}</strong><span>加权净利润</span></div>
           </div>
-          {desk.geo.length === 0 ? <p className="meta">当月还没有销售，区域 / 城市的加权要等本月账单。切到有账单的历史月份可以看到加权结果。</p> : null}
+          {desk.geo.length === 0 ? <p className="meta">这个月还没有销售。日历上的当月还没开始，结账看上月。</p> : null}
           <div className="panel" style={{ overflowX: "auto" }}>
             <table>
               <thead>

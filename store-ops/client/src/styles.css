@@ -188,6 +188,8 @@ section h3 { margin: 22px 0 8px; }
   display: grid; place-items: center; font-size: 11px; font-variant-numeric: tabular-nums;
 }
 .lane-done { color: var(--good); font-weight: 700; margin: 4px 0 8px; }
+.lane-alert { color: var(--bad); font-weight: 700; margin: 4px 0 8px; }
+.lane-links { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 
 @media (prefers-reduced-motion: reduce) {
   label.action-status, .error, .ok { transition: none; animation: none; }

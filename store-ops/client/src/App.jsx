@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createApi, money } from "./api.js";
 import { Action, BUSY_HOLD_MS, WaitingCopy } from "./Action.jsx";
 import { CockpitPage, ForecastPage, MonitorPage, RentPage } from "./PrdPages.jsx";
-import { historyMonths, historyWindow, sameMonth } from "./period.js";
+import { calendarMonth, historyMonths, historyWindow, monthIndex, sameMonth } from "./period.js";
 
 const ROLES = [
   { id: "expansion", label: "拓展部", actor: "拓展专员" },
@@ -93,7 +93,10 @@ export default function App() {
     ...data.journey, ...data.sales, ...data.bills, ...data.reconciliations, ...data.payments,
   ], accounting) : [];
 
-  function openStore(id) {
+  const calendar = calendarMonth();
+
+  function openStore(id, nextPeriod) {
+    if (nextPeriod) setPeriod(nextPeriod);
     setStoreId(id);
     setPhotoStoreId(id);
     setPage("journey");
@@ -135,14 +138,14 @@ export default function App() {
           {error ? <div className="error">{error}</div> : null}
           {!data ? <p>{error ? "接口恢复后会自动再打开 Access 数据库。" : <WaitingCopy text="正在打开 Access 数据库" active />}</p> : null}
           {data && page === "home" ? (
-            <Home data={data} period={viewed} months={months} accounting={accounting} onPeriod={setPeriod} onOpen={openStore} onPreview={setPhotoStoreId} />
+            <Home data={data} period={viewed} months={months} accounting={accounting} calendar={calendar} onPeriod={setPeriod} onOpen={openStore} onPreview={setPhotoStoreId} />
           ) : null}
           {data && page === "stores" ? (
-            <Stores data={data} period={viewed} months={months} accounting={accounting} onPeriod={setPeriod} role={role} onOpen={openStore} onPreview={setPhotoStoreId} onRun={run} api={api} busyId={busyId} />
+            <Stores data={data} period={viewed} months={months} accounting={accounting} calendar={calendar} onPeriod={setPeriod} role={role} onOpen={openStore} onPreview={setPhotoStoreId} onRun={run} api={api} busyId={busyId} />
           ) : null}
           {data && page === "contract" ? <ContractDesk api={api} onRun={run} onOpen={openStore} busyId={busyId} /> : null}
           {data && page === "journey" ? (
-            <Journey data={data} storeId={storeId} period={viewed} role={role} api={api} onRun={run} busyId={busyId} />
+            <Journey data={data} storeId={storeId} period={viewed} accounting={accounting} calendar={calendar} onOpen={openStore} role={role} api={api} onRun={run} busyId={busyId} />
           ) : null}
           {data && page === "rent" ? <RentPage api={api} onRun={run} busyId={busyId} /> : null}
           {data && page === "forecast" ? <ForecastPage api={api} onRun={run} busyId={busyId} /> : null}
@@ -203,7 +206,7 @@ function MonthHistory({ months, selected, accounting, onPeriod }) {
           className={sameMonth(item, selected) ? "active" : "ghost"}
           onClick={() => onPeriod(item)}
         >
-          {sameMonth(item, accounting) ? "当月" : `${item.year}年${item.month}月`}
+          {sameMonth(item, accounting) ? "上月" : `${item.year}年${item.month}月`}
         </button>
       ))}
       {windowed.hasNext ? (
@@ -213,34 +216,59 @@ function MonthHistory({ months, selected, accounting, onPeriod }) {
   );
 }
 
-function LaneSteps({ step }) {
-  const done = Number(step) >= 13;
+function laneUnfinished(data, storeId, period) {
+  return data.alerts.some((alert) => (
+    alert.store_id === storeId && inMonth(alert, period) && alert.level === "red" && alert.dimension === "泳道"
+  ));
+}
+
+function LaneStatus({ step, unfinished, idleLabel }) {
+  if (Number(step) >= 13) return <p className="lane-done">该泳道13步全部完成</p>;
+  if (unfinished) return <p className="lane-alert">未完成 · 红色预警</p>;
+  if (!Number(step)) return <p className="meta">{idleLabel || "本月尚未开始"}</p>;
+  return <p className="meta">进行到第 {step} 步</p>;
+}
+
+function LaneLinks({ storeId, accounting, calendar, onOpen, lastDone }) {
   return (
     <>
-      <div className="lane-steps" aria-label={done ? "该月泳道已完成" : `进行到第 ${step} 步`}>
-        {STEP_COLORS.map((color, index) => {
-          const number = index + 1;
-          const reached = Number(step) >= number;
-          return (
-            <span
-              key={number}
-              className={reached ? "done" : "todo"}
-              style={reached
-                ? { background: color, borderColor: color, color: "#fff" }
-                : { borderColor: color, color }}
-              title={`第 ${number} 步`}
-            >
-              {number}
-            </span>
-          );
-        })}
+      {lastDone ? <p className="lane-done">完成上月泳道</p> : null}
+      <div className="lane-links">
+        <button type="button" className="linkish" onClick={() => onOpen(storeId, accounting)}>上月这条泳道</button>
+        <button type="button" className="linkish" onClick={() => onOpen(storeId, calendar)}>当月这条泳道</button>
       </div>
-      {done ? <p className="lane-done">该月泳道已完成</p> : <p className="meta">{Number(step) > 0 ? `进行到第 ${step} 步` : "本月尚未开始"}</p>}
     </>
   );
 }
 
-function Home({ data, period, months, accounting, onPeriod, onOpen, onPreview }) {
+function RedQueue({ data, period, stores, onOpen }) {
+  const ids = new Set(stores.map((store) => store.id));
+  const rows = data.alerts.filter((alert) => alert.level === "red" && inMonth(alert, period) && ids.has(alert.store_id));
+  return (
+    <section className="panel" id="red-queue">
+      <h3>红色预警</h3>
+      {rows.length === 0 ? <p className="meta">这个月没有未完成的泳道。</p> : (
+        <table>
+          <thead><tr><th>店铺</th><th>维度</th><th>说明</th></tr></thead>
+          <tbody>
+            {rows.map((alert) => {
+              const store = data.stores.find((item) => item.id === alert.store_id);
+              return (
+                <tr key={alert.id}>
+                  <td><button type="button" className="linkish" onClick={() => onOpen(alert.store_id, period)}>{store?.name || alert.store_id}</button></td>
+                  <td><span className="tag red">{alert.dimension}</span></td>
+                  <td>{alert.message}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
+function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, onPreview }) {
   const [query, setQuery] = useState("");
   const shown = data.stores.filter((store) => matchesStore(store, query));
   const payable = data.bills.filter((bill) => inMonth(bill, period)).reduce((sum, bill) => sum + Number(bill.payable || 0), 0);
@@ -250,11 +278,11 @@ function Home({ data, period, months, accounting, onPeriod, onOpen, onPreview })
     <>
       <h2>从签约到收账，按泳道往下走</h2>
       <p className="lede">
-        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上当月活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。下面是大陆 Max Mara 主品牌样本店，每家都能打开自己的泳道。日历上的 11 月仍结 10 月，所以当月是上一个自然月。
+        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。财务按上月结账，日历上的当月还没开始。4 月到上月按 3 月的正常水平做了样本，泳道记为完成。没有走完的店放在红色预警队列里。
       </p>
       <div className="kpis">
         <div className="kpi"><strong>{data.stores.length}</strong><span>在册店铺</span></div>
-        <div className="kpi"><strong>{money(payable)}</strong><span>本月系统应付租金</span></div>
+        <div className="kpi"><strong>{money(payable)}</strong><span>{sameMonth(period, accounting) ? "上月" : `${period.month}月`}系统应付租金</span></div>
         <div className="kpi"><strong>{reds}</strong><span>红色预警</span></div>
         <div className="kpi"><strong>{diffs}</strong><span>未对齐的对账</span></div>
       </div>
@@ -263,17 +291,25 @@ function Home({ data, period, months, accounting, onPeriod, onOpen, onPreview })
         <span className="meta">显示 {shown.length} / {data.stores.length} 家</span>
         <MonthHistory months={months} selected={period} accounting={accounting} onPeriod={onPeriod} />
       </div>
+      <RedQueue data={data} period={period} stores={shown} onOpen={onOpen} />
       <div className="grid">
         {shown.map((store) => {
           const step = laneStep(data, store.id, period);
+          const idleLabel = sameMonth(period, calendar) ? "当月还没开始" : "本月尚未开始";
           return (
             <article className="card" key={store.id} onMouseEnter={() => onPreview(store.id)}>
               <span className="tag">{store.region} · {store.city}</span>
               <h3>{store.name}</h3>
               <p className="meta">{store.store_type || "精品店"} · {store.mall_name} · {store.keep_decision || "待评估"}</p>
               {store.address ? <p className="meta">{store.address}</p> : null}
-              <LaneSteps step={step} />
-              <button className="linkish" onClick={() => onOpen(store.id)}>上月 / 继续当月这条泳道</button>
+              <LaneStatus step={step} unfinished={laneUnfinished(data, store.id, period)} idleLabel={idleLabel} />
+              <LaneLinks
+                storeId={store.id}
+                accounting={accounting}
+                calendar={calendar}
+                onOpen={onOpen}
+                lastDone={laneStep(data, store.id, accounting) >= 13}
+              />
             </article>
           );
         })}
@@ -343,7 +379,7 @@ function Stores({ data, period, months, accounting, onPeriod, role, onOpen, onPr
                   <td className="num">{sales ? money(sales.sales) : "—"}</td>
                   <td className="num">{bill ? money(bill.payable) : "—"}</td>
                   <td className="num">{bill?.rent_to_sales ? `${(Number(bill.rent_to_sales) * 100).toFixed(1)}%` : "—"}</td>
-                  <td>{step}/13</td>
+                  <td>{step >= 13 ? <span className="lane-done">该泳道13步全部完成</span> : laneUnfinished(data, store.id, period) ? <span className="lane-alert">未完成 · 红色预警</span> : (step ? `进行到第 ${step} 步` : "—")}</td>
                 </tr>
               );
             })}
@@ -462,10 +498,11 @@ function readBase64(file) {
   });
 }
 
-function Journey({ data, storeId, period, role, api, onRun, busyId }) {
+function Journey({ data, storeId, period, accounting, calendar, onOpen, role, api, onRun, busyId }) {
   const store = data.stores.find((item) => item.id === storeId);
   const step = laneStep(data, storeId, period);
   const currentLane = sameMonth(period, data.period);
+  const futureLane = monthIndex(period) > monthIndex(data.period);
   const bill = data.bills.find((item) => item.store_id === storeId && inMonth(item, period));
   const alerts = data.alerts.filter((item) => item.store_id === storeId && inMonth(item, period));
   const recon = data.reconciliations.find((item) => item.store_id === storeId && inMonth(item, period));
@@ -483,6 +520,7 @@ function Journey({ data, storeId, period, role, api, onRun, busyId }) {
 
   return (
     <div className="work">
+      {Number(step) > 0 && Number(step) < 13 ? (
       <ol className="steps">
         {data.steps.map((item) => {
           const color = STEP_COLORS[item.step - 1];
@@ -504,15 +542,16 @@ function Journey({ data, storeId, period, role, api, onRun, busyId }) {
           );
         })}
       </ol>
+      ) : null}
       <section className="panel">
         <span className="tag">{store.mall_name}</span>
         <h2>{store.name}</h2>
         <p className="meta">{[store.store_type, store.province, store.city, store.phone, store.hours].filter(Boolean).join(" · ")}</p>
         {store.address ? <p className="meta">{store.address}</p> : null}
         {store.data_note ? <p className="meta">{store.data_note}</p> : null}
-        <p className="meta">第 {step} / 13 步已完成。{currentLane ? "下一步只能由泳道上的部门提交。" : "这是历史月份，只可查看。"}</p>
-        <LaneSteps step={step} />
-        {!currentLane ? <p className="meta">上月 / 继续当月这条泳道请切回「当月」。</p> : null}
+        <p className="meta">{currentLane ? "下一步只能由泳道上的部门提交。" : futureLane ? "当月还没开始。" : "这是历史月份，只可查看。"}</p>
+        <LaneStatus step={step} unfinished={laneUnfinished(data, storeId, period)} idleLabel={futureLane ? "当月还没开始" : "本月尚未开始"} />
+        <LaneLinks storeId={store.id} accounting={accounting} calendar={calendar} onOpen={onOpen} lastDone={laneStep(data, storeId, accounting) >= 13} />
 
         {currentLane && next === 5 ? (
           <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.activity(store.id, { activityNote, tempRate, subsidy }), "save-activity"); }}>
@@ -613,8 +652,7 @@ function Journey({ data, storeId, period, role, api, onRun, busyId }) {
         ) : null}
 
         {payment ? <p className="ok" style={{ marginTop: 14 }}>付款申请 {money(payment.amount)} 元，状态 {payment.status}。</p> : null}
-        {step >= 13 ? <p className="ok" style={{ marginTop: 14 }}>这条泳道本月已走完。</p> : null}
-        {currentLane && next < 5 ? <p className="meta">本月泳道还停在合同阶段。已有档案的店，从第 5 步录入当月活动。</p> : null}
+        {currentLane && next < 5 ? <p className="meta">本月泳道还停在合同阶段。已有档案的店，从第 5 步录入活动。</p> : null}
       </section>
     </div>
   );
@@ -636,7 +674,7 @@ function BillTrace({ bill, alerts }) {
             {item.decision}　<em>{item.detail}</em>
           </li>
         ))}
-      </ol>
+      </ol>}
     </div>
   );
 }

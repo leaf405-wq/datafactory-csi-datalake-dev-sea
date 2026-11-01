@@ -7,6 +7,7 @@ import { SAMPLE_CONTRACT } from "./parser.js";
 import { seedIfEmpty } from "./seed.js";
 import { ensureCatalog } from "./catalog.js";
 import { ensurePhotos, readPhoto } from "./photos.js";
+import { ensureCloseMonths } from "./closeMonths.js";
 import {
   ApiError,
   PERIOD,
@@ -132,8 +133,10 @@ await startAccess();
 if ((await all("stores")).length === 0) await seedIfEmpty();
 const catalog = await ensureCatalog();
 const photos = await ensurePhotos();
+const close = await ensureCloseMonths(PERIOD);
 console.log(`catalog ${catalog.total} added ${catalog.added}`);
 console.log(`photos ${photos.photos} added ${photos.added} linked ${photos.linked}`);
+console.log(`close months ${close.months.map((item) => item.month).join("/")} added ${close.added} incomplete ${close.incomplete.join("、")}`);
 const servers = await listenHttp(app, port);
 console.log(`store-ops http://127.0.0.1:${port}`);
 
