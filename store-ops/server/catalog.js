@@ -1,5 +1,4 @@
 import { all, insert, update } from "./access.js";
-import { calculateRent, saveActivity } from "./workflow.js";
 
 const NOW = "2026-03-01 08:00:00";
 
@@ -174,16 +173,6 @@ export async function ensureCatalog() {
       step: 4,
       updated_at: NOW,
     });
-    if (index % 6 !== 0) {
-      await saveActivity({
-        role: "admin",
-        actor: "系统",
-        storeId: item.id,
-        activityNote: "样本月，无特殊活动",
-        subsidy: 0,
-      });
-      await calculateRent({ role: "admin", actor: "系统", storeId: item.id });
-    }
     added += 1;
     byCode.set(item.code, { id: item.id, code: item.code });
     byName.set(item.name, { id: item.id, name: item.name });

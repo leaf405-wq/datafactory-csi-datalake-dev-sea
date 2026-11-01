@@ -8,7 +8,7 @@ import {
   diagnoseHealth,
   inRentFreePeriod,
 } from "./rentEngine.js";
-import { accountingPeriod } from "../client/src/period.js";
+import { accountingPeriod, calendarMonth } from "../client/src/period.js";
 
 export const PERIOD = accountingPeriod();
 export const ROLE_LABEL = {
@@ -68,29 +68,41 @@ async function audit(actor, role, action, detail) {
   });
 }
 
-function journeyId(storeId) {
-  return `${storeId}-${PERIOD.year}-${PERIOD.month}`;
+function chosenPeriod(input) {
+  const year = Number(input?.year);
+  const month = Number(input?.month);
+  if (!year || month < 1 || month > 12) return { year: PERIOD.year, month: PERIOD.month };
+  return { year, month };
 }
 
-async function getJourney(storeId) {
-  const rows = await find("journey", { id: journeyId(storeId) });
+function journeyId(storeId, period = PERIOD) {
+  return `${storeId}-${period.year}-${period.month}`;
+}
+
+async function getJourney(storeId, period = PERIOD) {
+  const rows = await find("journey", { id: journeyId(storeId, period) });
   return rows[0] || null;
 }
 
-async function setStep(storeId, step) {
-  const current = await getJourney(storeId);
+async function setStep(storeId, step, period = PERIOD) {
+  const current = await getJourney(storeId, period);
   if (!current) {
     await insert("journey", {
-      id: journeyId(storeId),
+      id: journeyId(storeId, period),
       store_id: storeId,
-      year: PERIOD.year,
-      month: PERIOD.month,
+      year: period.year,
+      month: period.month,
       step,
       updated_at: now(),
     });
     return;
   }
   await update("journey", current.id, { step, updated_at: now() });
+}
+
+async function parkReady(storeId, period) {
+  const current = await getJourney(storeId, period);
+  if (!current || Number(current.step) < 4) await setStep(storeId, 4, period);
 }
 
 function requireStep(journey, atLeast, hint) {
@@ -274,16 +286,19 @@ export async function confirmContract({ role, actor, contractId, edits = {} }) {
       source: "DW",
     });
   }
-  await setStep(storeId, 4);
+  await parkReady(storeId, PERIOD);
+  const calendar = calendarMonth();
+  if (calendar.year !== PERIOD.year || calendar.month !== PERIOD.month) await parkReady(storeId, calendar);
   await audit(actor, role, "复核合同并生成店铺档案", storeName);
   return { storeId, step: 4 };
 }
 
-export async function saveActivity({ role, actor, storeId, activityNote, tempRate, subsidy }) {
+export async function saveActivity({ role, actor, storeId, activityNote, tempRate, subsidy, year, month }) {
   assertRole(role, ["ops"]);
-  const journey = await getJourney(storeId);
+  const period = chosenPeriod({ year, month });
+  const journey = await getJourney(storeId, period);
   requireStep(journey, 4, "请先完成合同复核，生成店铺档案");
-  const existing = (await find("monthly_inputs", { store_id: storeId, year: PERIOD.year, month: PERIOD.month }))[0];
+  const existing = (await find("monthly_inputs", { store_id: storeId, year: period.year, month: period.month }))[0];
   const row = {
     activity_note: activityNote || "本月无特殊活动",
     temp_rate: tempRate === "" || tempRate == null ? null : Number(tempRate),
@@ -296,27 +311,28 @@ export async function saveActivity({ role, actor, storeId, activityNote, tempRat
     await insert("monthly_inputs", {
       id: id(),
       store_id: storeId,
-      year: PERIOD.year,
-      month: PERIOD.month,
+      year: period.year,
+      month: period.month,
       ...row,
     });
   }
-  await setStep(storeId, Math.max(journey.step || 0, 5));
+  await setStep(storeId, Math.max(journey.step || 0, 5), period);
   await audit(actor, role, "录入当月活动与临时提点", storeId);
   return { step: 5 };
 }
 
-export async function calculateRent({ role, actor, storeId }) {
+export async function calculateRent({ role, actor, storeId, year, month }) {
   assertRole(role, ["ops", "finance"]);
-  const journey = await getJourney(storeId);
+  const period = chosenPeriod({ year, month });
+  const journey = await getJourney(storeId, period);
   requireStep(journey, 5, "请营运先录入当月活动；如果没有活动，也要提交“无特殊活动”");
   const contract = (await find("contracts", { store_id: storeId, status: "EFFECTIVE" }))[0];
   if (!contract) throw new ApiError(409, "这家店还没有生效合同");
-  const salesRow = (await find("sales_monthly", { store_id: storeId, year: PERIOD.year, month: PERIOD.month }))[0];
-  const activity = (await find("monthly_inputs", { store_id: storeId, year: PERIOD.year, month: PERIOD.month }))[0];
+  const salesRow = (await find("sales_monthly", { store_id: storeId, year: period.year, month: period.month }))[0];
+  const activity = (await find("monthly_inputs", { store_id: storeId, year: period.year, month: period.month }))[0];
   const rate = activity?.temp_rate ? Number(activity.temp_rate) : Number(contract.rate);
   const bill = calculateMonthlyRent({
-    inRentFreePeriod: inRentFreePeriod(contract, PERIOD.year, PERIOD.month),
+    inRentFreePeriod: inRentFreePeriod(contract, period.year, period.month),
     waivePropertyInRentFree: Number(contract.waive_property) === 1,
     model: contract.model,
     sales: salesRow ? Number(salesRow.sales) : 0,
@@ -339,13 +355,13 @@ export async function calculateRent({ role, actor, storeId }) {
     rentToSales: bill.rentToSales,
     salesMissing: !salesRow,
   });
-  await replaceMonth("rent_bills", storeId);
-  await replaceMonth("alerts", storeId);
+  await replaceMonth("rent_bills", storeId, period);
+  await replaceMonth("alerts", storeId, period);
   await insert("rent_bills", {
     id: id(),
     store_id: storeId,
-    year: PERIOD.year,
-    month: PERIOD.month,
+    year: period.year,
+    month: period.month,
     model: contract.model,
     in_rent_free: bill.inRentFree ? 1 : 0,
     sales: bill.sales,
@@ -369,46 +385,48 @@ export async function calculateRent({ role, actor, storeId }) {
     await insert("alerts", {
       id: id(),
       store_id: storeId,
-      year: PERIOD.year,
-      month: PERIOD.month,
+      year: period.year,
+      month: period.month,
       level: alert.level,
       dimension: alert.dimension,
       message: alert.message,
       status: "OPEN",
     });
   }
-  await setStep(storeId, 7);
+  await setStep(storeId, 7, period);
   await audit(actor, role, "接收DW销售并计算租金", `${storeId} 应付 ${bill.payable}`);
   return { bill: { ...bill, trace: bill.trace }, alerts, step: 7 };
 }
 
-export async function receiveMallBill({ role, actor, storeId }) {
+export async function receiveMallBill({ role, actor, storeId, year, month }) {
   assertRole(role, ["finance"]);
-  const journey = await getJourney(storeId);
+  const period = chosenPeriod({ year, month });
+  const journey = await getJourney(storeId, period);
   requireStep(journey, 7, "请先完成当月租金计算和预警");
-  await setStep(storeId, Math.max(journey.step, 8));
+  await setStep(storeId, Math.max(journey.step, 8), period);
   await audit(actor, role, "登记已收到商场对账单", storeId);
   return { step: 8 };
 }
 
-export async function reconcile({ role, actor, storeId, mall }) {
+export async function reconcile({ role, actor, storeId, mall, year, month }) {
   assertRole(role, ["finance"]);
-  const journey = await getJourney(storeId);
+  const period = chosenPeriod({ year, month });
+  const journey = await getJourney(storeId, period);
   requireStep(journey, 8, "请先登记商场对账单已收到");
-  const bill = (await find("rent_bills", { store_id: storeId, year: PERIOD.year, month: PERIOD.month }))[0];
+  const bill = (await find("rent_bills", { store_id: storeId, year: period.year, month: period.month }))[0];
   if (!bill) throw new ApiError(409, "系统里还没有这月的租金账单");
   const store = (await find("stores", { id: storeId }))[0];
   const lines = comparisonLines(bill, mall);
   const mallTotal = Number(mall.total ?? lines.reduce((sum, line) => sum + line.mall, 0));
   const systemTotal = Number(bill.payable);
   const diff = round2(mallTotal - systemTotal);
-  await replaceMonth("mall_bills", storeId);
-  await replaceMonth("reconciliations", storeId);
+  await replaceMonth("mall_bills", storeId, period);
+  await replaceMonth("reconciliations", storeId, period);
   await insert("mall_bills", {
     id: id(),
     store_id: storeId,
-    year: PERIOD.year,
-    month: PERIOD.month,
+    year: period.year,
+    month: period.month,
     base_rent: Number(mall.base_rent || 0),
     commission_rent: Number(mall.commission_rent || 0),
     property_fee: Number(mall.property_fee || 0),
@@ -421,15 +439,15 @@ export async function reconcile({ role, actor, storeId, mall }) {
   });
   const letter = buildLetter({
     store,
-    period: `${PERIOD.year}年${PERIOD.month}月`,
+    period: `${period.year}年${period.month}月`,
     lines,
     diff,
   });
   await insert("reconciliations", {
     id: id(),
     store_id: storeId,
-    year: PERIOD.year,
-    month: PERIOD.month,
+    year: period.year,
+    month: period.month,
     system_total: systemTotal,
     mall_total: mallTotal,
     diff_amount: diff,
@@ -439,16 +457,17 @@ export async function reconcile({ role, actor, storeId, mall }) {
     resolution: "",
     lines_json: JSON.stringify(lines),
   });
-  await setStep(storeId, 11);
+  await setStep(storeId, 11, period);
   await audit(actor, role, "上传对账单并完成自动比对", `${storeId} 差额 ${diff}`);
   return { lines, systemTotal, mallTotal, diff, letter, step: 11 };
 }
 
-export async function resolveRecon({ role, actor, storeId, resolution, reason }) {
+export async function resolveRecon({ role, actor, storeId, resolution, reason, year, month }) {
   assertRole(role, ["finance"]);
-  const journey = await getJourney(storeId);
+  const period = chosenPeriod({ year, month });
+  const journey = await getJourney(storeId, period);
   requireStep(journey, 11, "请先上传对账单，生成差异报告");
-  const recon = (await find("reconciliations", { store_id: storeId, year: PERIOD.year, month: PERIOD.month }))[0];
+  const recon = (await find("reconciliations", { store_id: storeId, year: period.year, month: period.month }))[0];
   if (!recon) throw new ApiError(404, "没有对账记录");
   if (!["accept", "dispute"].includes(resolution)) throw new ApiError(400, "请选择确认无误或发起申诉");
   await update("reconciliations", recon.id, {
@@ -456,29 +475,30 @@ export async function resolveRecon({ role, actor, storeId, resolution, reason })
     reason: reason || (resolution === "accept" ? "金额一致或差异可接受" : "商场口径与合同不符"),
     status: resolution === "accept" ? "ACCEPTED" : "DISPUTED",
   });
-  await setStep(storeId, 12);
+  await setStep(storeId, 12, period);
   await audit(actor, role, resolution === "accept" ? "确认账单无误" : "发起差异申诉", storeId);
   return { step: 12 };
 }
 
-export async function createPayment({ role, actor, storeId }) {
+export async function createPayment({ role, actor, storeId, year, month }) {
   assertRole(role, ["finance"]);
-  const journey = await getJourney(storeId);
+  const period = chosenPeriod({ year, month });
+  const journey = await getJourney(storeId, period);
   requireStep(journey, 12, "请先确认账单或发起申诉");
-  const bill = (await find("rent_bills", { store_id: storeId, year: PERIOD.year, month: PERIOD.month }))[0];
-  const existing = (await find("payment_requests", { store_id: storeId, year: PERIOD.year, month: PERIOD.month }))[0];
+  const bill = (await find("rent_bills", { store_id: storeId, year: period.year, month: period.month }))[0];
+  const existing = (await find("payment_requests", { store_id: storeId, year: period.year, month: period.month }))[0];
   if (!existing) {
     await insert("payment_requests", {
       id: id(),
       store_id: storeId,
-      year: PERIOD.year,
-      month: PERIOD.month,
+      year: period.year,
+      month: period.month,
       amount: Number(bill?.payable || 0),
       status: "PENDING_APPROVAL",
       created_at: now(),
     });
   }
-  await setStep(storeId, 13);
+  await setStep(storeId, 13, period);
   await audit(actor, role, "生成付款申请", storeId);
   return { step: 13, amount: Number(bill?.payable || 0) };
 }
@@ -509,8 +529,8 @@ function comparisonLines(bill, mall) {
   }));
 }
 
-async function replaceMonth(table, storeId) {
-  const rows = await find(table, { store_id: storeId, year: PERIOD.year, month: PERIOD.month });
+async function replaceMonth(table, storeId, period = PERIOD) {
+  const rows = await find(table, { store_id: storeId, year: period.year, month: period.month });
   for (const row of rows) await remove(table, row.id);
 }
 

@@ -316,7 +316,7 @@ function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, on
     <>
       <h2>从签约到收账，按泳道往下走</h2>
       <p className="lede">
-        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。页面默认停在上月。当月每家店从泳道第 1 步开始，13 步都列在店里。4 月到上月按 3 月的正常水平做了样本，走完的只标绿色完成。没有走完的店放在红色预警队列里。
+        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。页面默认停在上月。新店会自动走完第 1 步到第 4 步。已有档案的店，当月、上月和历史月都完成第 4 步，停在第 5 步，可以从录入活动继续。
       </p>
       <div className="kpis">
         <div className="kpi"><strong>{data.stores.length}</strong><span>在册店铺</span></div>
@@ -336,7 +336,7 @@ function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, on
           return (
             <article className="card" key={store.id} onMouseEnter={() => onPreview(store.id)}>
               <span className="tag">{store.region} · {store.city}</span>
-              <h3>{store.name}</h3>
+              <h3><button type="button" className="linkish" onClick={() => onOpen(store.id, period)}>{store.name}</button></h3>
               <p className="meta">{store.store_type || "精品店"} · {store.mall_name} · {store.keep_decision || "待评估"}</p>
               {store.address ? <p className="meta">{store.address}</p> : null}
               <LaneStatus step={step} unfinished={laneUnfinished(data, store.id, period)} />
@@ -416,7 +416,7 @@ function Stores({ data, period, months, accounting, calendar, onPeriod, role, on
                   <td className="num">{sales ? money(sales.sales) : "—"}</td>
                   <td className="num">{bill ? money(bill.payable) : "—"}</td>
                   <td className="num">{bill?.rent_to_sales ? `${(Number(bill.rent_to_sales) * 100).toFixed(1)}%` : "—"}</td>
-                  <td className="col-step">{step >= 13 ? <span className="lane-done">该泳道13步全部完成</span> : laneUnfinished(data, store.id, period) ? <span className="lane-alert">未完成 · 红色预警</span> : (step ? `进行到第 ${step} 步` : "—")}</td>
+                  <td className="col-step">{step >= 13 ? <span className="lane-done">该泳道13步全部完成</span> : laneUnfinished(data, store.id, period) ? <span className="lane-alert">未完成 · 红色预警</span> : (step ? `第 ${Math.min(step + 1, 13)} / 13 步` : "—")}</td>
                 </tr>
               );
             })}
@@ -538,8 +538,8 @@ function readBase64(file) {
 function Journey({ data, storeId, period, accounting, calendar, onOpen, role, api, onRun, busyId }) {
   const store = data.stores.find((item) => item.id === storeId);
   const step = laneStep(data, storeId, period);
-  const currentLane = sameMonth(period, data.period);
-  const futureLane = monthIndex(period) > monthIndex(data.period);
+  const editableLane = monthIndex(period) <= monthIndex(calendar);
+  const lanePeriod = { year: Number(period.year), month: Number(period.month) };
   const bill = data.bills.find((item) => item.store_id === storeId && inMonth(item, period));
   const alerts = data.alerts.filter((item) => item.store_id === storeId && inMonth(item, period));
   const recon = data.reconciliations.find((item) => item.store_id === storeId && inMonth(item, period));
@@ -586,12 +586,12 @@ function Journey({ data, storeId, period, accounting, calendar, onOpen, role, ap
         <p className="meta">{[store.store_type, store.province, store.city, store.phone, store.hours].filter(Boolean).join(" · ")}</p>
         {store.address ? <p className="meta">{store.address}</p> : null}
         {store.data_note ? <p className="meta">{store.data_note}</p> : null}
-        <p className="meta">{currentLane ? "下一步只能由泳道上的部门提交。" : futureLane ? "当月从第 1 步开始，共 13 步。结账仍看上月。" : "这是历史月份，只可查看。"}</p>
+        <p className="meta">{editableLane ? "已有档案的店从第 5 步继续。下一步只能由泳道上的部门提交。" : "还没到这个月。"}</p>
         <LaneStatus step={step} unfinished={laneUnfinished(data, storeId, period)} />
         <LaneLinks storeId={store.id} accounting={accounting} calendar={calendar} onOpen={onOpen} lastDone={laneStep(data, storeId, accounting) >= 13} />
 
-        {currentLane && next === 5 ? (
-          <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.activity(store.id, { activityNote, tempRate, subsidy }), "save-activity"); }}>
+        {editableLane && next === 5 ? (
+          <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.activity(store.id, { activityNote, tempRate, subsidy, ...lanePeriod }), "save-activity"); }}>
             <h3>5　录入当月活动</h3>
             <label htmlFor="activity-note">特殊活动</label>
             <input id="activity-note" value={activityNote} onChange={(event) => setActivityNote(event.target.value)} />
@@ -608,13 +608,13 @@ function Journey({ data, storeId, period, accounting, calendar, onOpen, role, ap
           </form>
         ) : null}
 
-        {currentLane && (next === 6 || next === 7) ? (
+        {editableLane && (next === 6 || next === 7) ? (
           <div>
             <h3>6–7　接收 DW 销售并计算</h3>
             <p className="lede">系统读取本月 DW 销售，按免租、两者取高、附加费、补贴、增值税的顺序出账，并把距保底过大写成预警。</p>
             <div className="row">
               <Action id="calculate-rent" busyId={busyId} pending="正在计算租金">
-                <button id="calculate-rent" className="button" disabled={(role !== "ops" && role !== "finance") || Boolean(busyId)} onClick={() => onRun(() => api.calculate(store.id), "calculate-rent")}>计算本月租金</button>
+                <button id="calculate-rent" className="button" disabled={(role !== "ops" && role !== "finance") || Boolean(busyId)} onClick={() => onRun(() => api.calculate(store.id, lanePeriod), "calculate-rent")}>计算本月租金</button>
               </Action>
             </div>
           </div>
@@ -622,19 +622,19 @@ function Journey({ data, storeId, period, accounting, calendar, onOpen, role, ap
 
         {bill && step >= 7 ? <BillTrace bill={bill} alerts={alerts} /> : null}
 
-        {currentLane && next === 8 ? (
+        {editableLane && next === 8 ? (
           <div>
             <h3>8　商场对账单已送到财务</h3>
             <div className="row">
               <Action id="mall-received" busyId={busyId} pending="正在登记收妥">
-                <button id="mall-received" className="button" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.mallReceived(store.id), "mall-received")}>登记收妥</button>
+                <button id="mall-received" className="button" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.mallReceived(store.id, lanePeriod), "mall-received")}>登记收妥</button>
               </Action>
             </div>
           </div>
         ) : null}
 
-        {currentLane && next >= 9 && next <= 11 ? (
-          <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.reconcile(store.id, mall), "reconcile"); }}>
+        {editableLane && next >= 9 && next <= 11 ? (
+          <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.reconcile(store.id, { ...mall, ...lanePeriod }), "reconcile"); }}>
             <h3>9–11　上传商场账单并自动比对</h3>
             {["base_rent", "commission_rent", "property_fee", "promo_fee", "utility_fee", "card_fee", "advance_fee", "total"].map((key) => (
               <div key={key}>
@@ -661,35 +661,35 @@ function Journey({ data, storeId, period, accounting, calendar, onOpen, role, ap
 
         {recon && step >= 11 ? <Recon recon={recon} /> : null}
 
-        {currentLane && next === 12 ? (
+        {editableLane && next === 12 ? (
           <div>
             <h3>12　确认无误，或发差异函</h3>
             <label>原因</label>
             <input value={reason} onChange={(event) => setReason(event.target.value)} />
             <div className="row">
               <Action id="resolve-accept" busyId={busyId} pending="正在确认账单">
-                <button id="resolve-accept" className="button" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.resolve(store.id, { resolution: "accept", reason }), "resolve-accept")}>确认无误</button>
+                <button id="resolve-accept" className="button" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.resolve(store.id, { resolution: "accept", reason, ...lanePeriod }), "resolve-accept")}>确认无误</button>
               </Action>
               <Action id="resolve-dispute" busyId={busyId} pending="正在生成差异函">
-                <button id="resolve-dispute" className="ghost" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.resolve(store.id, { resolution: "dispute", reason }), "resolve-dispute")}>发起申诉</button>
+                <button id="resolve-dispute" className="ghost" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.resolve(store.id, { resolution: "dispute", reason, ...lanePeriod }), "resolve-dispute")}>发起申诉</button>
               </Action>
             </div>
           </div>
         ) : null}
 
-        {currentLane && next === 13 ? (
+        {editableLane && next === 13 ? (
           <div>
             <h3>13　生成付款申请</h3>
             <div className="row">
               <Action id="create-payment" busyId={busyId} pending="正在生成付款申请">
-                <button id="create-payment" className="button" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.payment(store.id), "create-payment")}>按系统金额生成付款申请</button>
+                <button id="create-payment" className="button" disabled={role !== "finance" || Boolean(busyId)} onClick={() => onRun(() => api.payment(store.id, lanePeriod), "create-payment")}>按系统金额生成付款申请</button>
               </Action>
             </div>
           </div>
         ) : null}
 
-        {payment ? <p className="ok" style={{ marginTop: 14 }}>付款申请 {money(payment.amount)} 元，状态 {payment.status}。</p> : null}
-        {currentLane && next < 5 ? <p className="meta">本月泳道还停在合同阶段。已有档案的店，从第 5 步录入活动。</p> : null}
+        {payment && step >= 13 ? <p className="ok" style={{ marginTop: 14 }}>付款申请 {money(payment.amount)} 元，状态 {payment.status}。</p> : null}
+        {editableLane && next < 5 ? <p className="meta">本月泳道还停在合同阶段。已有档案的店，从第 5 步录入活动。</p> : null}
       </section>
     </div>
   );

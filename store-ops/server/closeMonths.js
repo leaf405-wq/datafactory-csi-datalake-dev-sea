@@ -1,4 +1,4 @@
-import { all, insert, update } from "./access.js";
+import { all, insert, remove, update } from "./access.js";
 import { accountingPeriod, calendarMonth, monthIndex } from "../client/src/period.js";
 import { calculateMonthlyRent, inRentFreePeriod } from "./rentEngine.js";
 
@@ -106,7 +106,6 @@ function normalBill(contract, year, month, marchSales, rng) {
 
 export function planCloseMonths({ storeIds, contracts, marchSales, accounting }) {
   const months = monthsToFill(accounting);
-  const unfinished = new Set(incompleteStoreIds(storeIds));
   const march = new Map((marchSales || []).map((row) => [row.store_id, Number(row.sales) || 0]));
   const rows = [];
   for (const storeId of storeIds) {
@@ -115,31 +114,21 @@ export function planCloseMonths({ storeIds, contracts, marchSales, accounting })
     for (const period of months) {
       const rng = mulberry32(hashText(`${storeId}-${period.year}-${period.month}`));
       const bill = normalBill(contract, period.year, period.month, march.get(storeId), rng);
-      const open = unfinished.has(storeId) && period.year === accounting.year && period.month === accounting.month;
       rows.push({
         storeId,
         year: period.year,
         month: period.month,
-        step: open ? 7 : 13,
+        step: 4,
         sales: bill.sales,
         payable: bill.payable,
         rentToSales: bill.rentToSales,
         bill,
-        incomplete: open,
-        alert: open ? {
-          level: "red",
-          dimension: "泳道",
-          message: "上月泳道未完成，已放入红色预警队列。",
-          status: "OPEN",
-        } : null,
+        incomplete: false,
+        alert: null,
       });
     }
   }
-  return {
-    months,
-    incomplete: [...unfinished].filter((storeId) => storeIds.includes(storeId)),
-    rows,
-  };
+  return { months, incomplete: [], rows };
 }
 
 export async function ensureCloseMonths(accounting = accountingPeriod()) {
@@ -270,15 +259,89 @@ export async function ensureCloseMonths(accounting = accountingPeriod()) {
   return { months: plan.months, added, incomplete: plan.incomplete };
 }
 
-/** The calendar month opens at swimlane step 1. It has no sales yet. */
+/** Existing stores already have an archive, so the open month waits on step 5. */
 export function openingLanePlan(storeIds, calendar) {
   return storeIds.map((storeId) => ({
     id: `${storeId}-${calendar.year}-${calendar.month}`,
     storeId,
     year: calendar.year,
     month: calendar.month,
-    step: 0,
+    step: 4,
   }));
+}
+
+export function monthsThrough(calendar, from = { year: 2026, month: 3 }) {
+  if (!calendar || monthIndex(calendar) < monthIndex(from)) return [];
+  const months = [];
+  let year = from.year;
+  let month = from.month;
+  while (monthIndex({ year, month }) <= monthIndex(calendar)) {
+    months.push({ year, month });
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+  return months;
+}
+
+const READY_MIGRATION = "老店泳道停在第5步";
+
+/** Old stores sit on step 5 for every month through the calendar month. */
+export async function ensureReadyLanes(calendar = calendarMonth()) {
+  const [stores, contracts, journeys, alerts, audits] = await Promise.all([
+    all("stores"),
+    all("contracts"),
+    all("journey"),
+    all("alerts"),
+    all("audit_log"),
+  ]);
+  const migrated = audits.some((row) => row.action === READY_MIGRATION);
+  const contracted = new Set(
+    contracts.filter((row) => row.status === "EFFECTIVE" && row.store_id).map((row) => row.store_id),
+  );
+  const byId = new Map(journeys.map((row) => [row.id, row]));
+  let parked = 0;
+  for (const storeId of stores.map((store) => store.id)) {
+    if (!contracted.has(storeId)) continue;
+    for (const period of monthsThrough(calendar)) {
+      const id = `${storeId}-${period.year}-${period.month}`;
+      const existing = byId.get(id);
+      const step = Number(existing?.step) || 0;
+      const next = migrated ? Math.max(step, 4) : 4;
+      if (!existing) {
+        await insert("journey", {
+          id,
+          store_id: storeId,
+          year: period.year,
+          month: period.month,
+          step: 4,
+          updated_at: NOW,
+        });
+        parked += 1;
+        continue;
+      }
+      if (next !== step) {
+        await update("journey", id, { step: next, updated_at: NOW });
+        parked += 1;
+      }
+    }
+  }
+  if (!migrated) {
+    for (const alert of alerts) {
+      if (alert.dimension === "泳道") await remove("alerts", alert.id);
+    }
+    await insert("audit_log", {
+      id: "audit-ready-lane",
+      actor: "系统",
+      role: "admin",
+      action: READY_MIGRATION,
+      detail: "已有合同的店，当月、上月和历史月都完成第 4 步，停在第 5 步，可以继续录入。",
+      created_at: NOW,
+    });
+  }
+  return { parked, migrated };
 }
 
 export async function ensureOpeningLane(calendar = calendarMonth()) {
@@ -292,8 +355,8 @@ export async function ensureOpeningLane(calendar = calendarMonth()) {
   for (const row of plan) {
     const existing = seen.get(row.id);
     if (existing) {
-      if (Number(existing.step) === 1 && !withSales.has(row.storeId)) {
-        await update("journey", row.id, { step: 0, updated_at: NOW });
+      if (Number(existing.step) < 4 && !withSales.has(row.storeId)) {
+        await update("journey", row.id, { step: 4, updated_at: NOW });
         added += 1;
       }
       continue;

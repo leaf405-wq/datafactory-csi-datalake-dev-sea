@@ -7,7 +7,7 @@ import { SAMPLE_CONTRACT } from "./parser.js";
 import { seedIfEmpty } from "./seed.js";
 import { ensureCatalog } from "./catalog.js";
 import { ensurePhotos, readPhoto } from "./photos.js";
-import { ensureCloseMonths, ensureOpeningLane } from "./closeMonths.js";
+import { ensureCloseMonths, ensureOpeningLane, ensureReadyLanes } from "./closeMonths.js";
 import {
   ApiError,
   PERIOD,
@@ -98,21 +98,42 @@ app.post("/api/stores/:id/activity", wrap(async (req) => saveActivity({
   activityNote: req.body.activityNote,
   tempRate: req.body.tempRate,
   subsidy: req.body.subsidy,
+  year: req.body.year,
+  month: req.body.month,
 })));
-app.post("/api/stores/:id/calculate", wrap(async (req) => calculateRent({ ...actor(req), storeId: req.params.id })));
-app.post("/api/stores/:id/mall-received", wrap(async (req) => receiveMallBill({ ...actor(req), storeId: req.params.id })));
+app.post("/api/stores/:id/calculate", wrap(async (req) => calculateRent({
+  ...actor(req),
+  storeId: req.params.id,
+  year: req.body.year,
+  month: req.body.month,
+})));
+app.post("/api/stores/:id/mall-received", wrap(async (req) => receiveMallBill({
+  ...actor(req),
+  storeId: req.params.id,
+  year: req.body.year,
+  month: req.body.month,
+})));
 app.post("/api/stores/:id/reconcile", wrap(async (req) => reconcile({
   ...actor(req),
   storeId: req.params.id,
   mall: req.body,
+  year: req.body.year,
+  month: req.body.month,
 })));
 app.post("/api/stores/:id/resolve", wrap(async (req) => resolveRecon({
   ...actor(req),
   storeId: req.params.id,
   resolution: req.body.resolution,
   reason: req.body.reason,
+  year: req.body.year,
+  month: req.body.month,
 })));
-app.post("/api/stores/:id/payment", wrap(async (req) => createPayment({ ...actor(req), storeId: req.params.id })));
+app.post("/api/stores/:id/payment", wrap(async (req) => createPayment({
+  ...actor(req),
+  storeId: req.params.id,
+  year: req.body.year,
+  month: req.body.month,
+})));
 app.post("/api/stores/:id/decision", wrap(async (req) => setDecision({
   ...actor(req),
   storeId: req.params.id,
@@ -135,10 +156,12 @@ const catalog = await ensureCatalog();
 const photos = await ensurePhotos();
 const close = await ensureCloseMonths(PERIOD);
 const opening = await ensureOpeningLane();
+const ready = await ensureReadyLanes();
 console.log(`catalog ${catalog.total} added ${catalog.added}`);
 console.log(`photos ${photos.photos} added ${photos.added} linked ${photos.linked}`);
-console.log(`close months ${close.months.map((item) => item.month).join("/")} added ${close.added} incomplete ${close.incomplete.join("、")}`);
+console.log(`close months ${close.months.map((item) => item.month).join("/")} added ${close.added}`);
 console.log(`opening lane ${opening.year}-${opening.month} added ${opening.added}`);
+console.log(`ready lanes parked ${ready.parked} migrated ${ready.migrated}`);
 const servers = await listenHttp(app, port);
 console.log(`store-ops http://127.0.0.1:${port}`);
 

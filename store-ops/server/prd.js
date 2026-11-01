@@ -403,6 +403,21 @@ function minMaxScore(rows, key) {
   });
 }
 
+/** 红榜：综合分前 20% 且分数不低于 50。黑榜：综合分后 20%，不看分数。 */
+export function assignBoards(ranking) {
+  const count = ranking.length;
+  const top = Math.ceil(count * 0.2);
+  const bottom = Math.ceil(count * 0.2);
+  ranking.forEach((row, index) => {
+    const best = index < top && Number(row.score) >= 50;
+    const worst = index >= count - bottom;
+    if (best) row.board = "红榜";
+    else if (worst) row.board = "黑榜";
+    else row.board = "";
+  });
+  return ranking;
+}
+
 export function buildDesk(snapshot) {
   const period = snapshot.period || { year: AS_OF.year, month: AS_OF.month };
   const timeProgress = AS_OF.day / AS_OF.daysInMonth;
@@ -467,12 +482,7 @@ export function buildDesk(snapshot) {
     const score = parts.length ? round2(parts.reduce((sum, value) => sum + value, 0) / parts.length) : null;
     return { ...row, score, staffEfficiency: null };
   }).sort((a, b) => (b.score || 0) - (a.score || 0) || String(a.name).localeCompare(String(b.name), "zh"));
-  ranking.forEach((row, index) => {
-    row.board = "";
-    if (ranking.length === 1) row.board = "红榜";
-    else if (index === 0) row.board = "红榜";
-    else if (index === ranking.length - 1) row.board = "黑榜";
-  });
+  assignBoards(ranking);
 
   function rollup(key) {
     const groups = new Map();

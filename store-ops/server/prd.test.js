@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildDesk, diagnosePrd, forecastStore, previewRent } from "./prd.js";
+import { assignBoards, buildDesk, diagnosePrd, forecastStore, previewRent } from "./prd.js";
 
 test("两者取高演示：50万销售、固定8万、扣点18%、物业1.2万，应付102000且不含税", () => {
   const bill = previewRent({
@@ -180,6 +180,19 @@ test("驾驶舱只用一个月的数据，租约未进 6 个月窗口", () => {
   assert.equal(desk.geoSummary.regions, 2);
   assert.equal(desk.geoSummary.cities, 2);
   assert.equal(desk.geoSummary.weightedNetProfit, roundSum(desk.geo, "weightedNetProfit"));
+});
+
+test("红榜取前 20% 且综合分至少 50，黑榜取后 20%", () => {
+  const high = [100, 99, 98, 97, 96, 95, 94, 93, 92, 40].map((score, index) => ({ name: `s${index}`, score }));
+  assignBoards(high);
+  assert.deepEqual(high.filter((row) => row.board === "红榜").map((row) => row.score), [100, 99]);
+  assert.deepEqual(high.filter((row) => row.board === "黑榜").map((row) => row.score), [92, 40]);
+
+  const gated = [100, 49, 48, 47, 46, 45, 44, 43, 42, 10].map((score, index) => ({ name: `g${index}`, score }));
+  assignBoards(gated);
+  assert.deepEqual(gated.filter((row) => row.board === "红榜").map((row) => row.score), [100]);
+  assert.deepEqual(gated.filter((row) => row.board === "黑榜").map((row) => row.score), [42, 10]);
+  assert.equal(gated.find((row) => row.score === 49).board, "");
 });
 
 test("当月没有账单时，区域加权利润留空", () => {

@@ -364,7 +364,7 @@ export function MonitorPage({ api, period, months, accounting, calendar, onPerio
     <section id="page-monitor">
       <h2>5.6 营业中店铺每日监控与预警</h2>
       <p className="lede">
-        观察日定在 2026-03-20，时间进度按 20/31。销售用的是所选月份的月结数，不是当日流水。DW 日数据还没有接进来。页面默认停在上月，当月从泳道第 1 步开始。
+        观察日定在 2026-03-20，时间进度按 20/31。销售用的是所选月份的月结数，不是当日流水。DW 日数据还没有接进来。页面默认停在上月。预警标签用绿色。
       </p>
       {error ? <div className="error">{error}</div> : null}
       {!desk ? <p><WaitingCopy text="正在读取店铺" active /></p> : (
@@ -391,7 +391,7 @@ export function MonitorPage({ api, period, months, accounting, calendar, onPerio
                 {ALERT_MATRIX.map((row) => (
                   <tr key={row[0]}>
                     <td>{row[0]}</td>
-                    <td><Level level="red">{row[1]}</Level></td>
+                    <td><Level level="green">{row[1]}</Level></td>
                     <td><Level level="orange">{row[2]}</Level></td>
                     <td><Level level="yellow">{row[3]}</Level></td>
                   </tr>
@@ -419,7 +419,7 @@ export function MonitorPage({ api, period, months, accounting, calendar, onPerio
                     <td>
                       {row.alerts?.length ? row.alerts.map((alert) => (
                         <span key={alert.message} style={{ display: "block", marginBottom: 4 }}>
-                          <Level level={alert.level}>{alert.dimension}</Level> {alert.message}
+                          <Level level={alert.level === "red" ? "green" : alert.level}>{alert.dimension}</Level> {alert.message}
                         </span>
                       )) : <Level>正常</Level>}
                       {row.notes?.map((note) => <span key={note} className="meta" style={{ display: "block" }}>{note}</span>)}
@@ -462,7 +462,7 @@ export function CockpitPage({ api, period, months, accounting, calendar, onPerio
             <div className="kpi"><strong>{geoView.geo.length ? (geoView.summary.weightedAverageProfit == null ? "—" : money(geoView.summary.weightedAverageProfit)) : "—"}</strong><span>平均加权利润</span></div>
             <div className="kpi"><strong>{geoView.geo.length ? money(geoView.summary.weightedNetProfit) : "—"}</strong><span>加权净利润</span></div>
           </div>
-          {geoView.geo.length === 0 ? <p className="meta">这个月还没有销售。当月泳道停在第 1 步，结账数字看上月。</p> : null}
+          {geoView.geo.length === 0 ? <p className="meta">这个月还没有销售。结账数字看上月。</p> : null}
           <div className="panel" style={{ overflowX: "auto" }}>
             <table>
               <thead>
@@ -509,7 +509,7 @@ export function CockpitPage({ api, period, months, accounting, calendar, onPerio
           </div>
 
           <h3>店铺健康度排行榜</h3>
-          <p className="meta">适用角色：高管 / 营运总监。综合分是销售、利润、坪效三项的相对位置，各项同等。人效要人事编制，这里空着，不计入分数。</p>
+          <p className="meta">适用角色：高管 / 营运总监。综合分是销售、利润、坪效三项的相对位置，各项同等。人效要人事编制，这里空着，不计入分数。红榜是综合分最高的前 20%，而且综合分至少 50。黑榜是综合分最低的后 20%，不看分数线。</p>
           <div className="panel" style={{ overflowX: "auto" }}>
             <table>
               <thead>
