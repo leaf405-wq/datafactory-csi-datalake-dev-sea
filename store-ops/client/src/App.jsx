@@ -131,7 +131,15 @@ export default function App() {
   );
 }
 
+function matchesStore(store, query) {
+  if (!query) return true;
+  const blob = [store.name, store.city, store.province, store.mall_name, store.address, store.phone, store.store_type].join(" ");
+  return blob.toLowerCase().includes(query.trim().toLowerCase());
+}
+
 function Home({ data, onOpen }) {
+  const [query, setQuery] = useState("");
+  const shown = data.stores.filter((store) => matchesStore(store, query));
   const payable = data.bills.reduce((sum, bill) => sum + Number(bill.payable || 0), 0);
   const reds = data.alerts.filter((alert) => alert.level === "red").length;
   const diffs = data.reconciliations.filter((row) => row.status === "DIFFERENCE").length;
@@ -139,7 +147,7 @@ function Home({ data, onOpen }) {
     <>
       <h2>从签约到收账，按泳道往下走</h2>
       <p className="lede">
-        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上当月活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。
+        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上当月活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。下面是大陆 Max Mara 主品牌样本店，每家都能打开自己的泳道。
       </p>
       <div className="kpis">
         <div className="kpi"><strong>{data.stores.length}</strong><span>在册店铺</span></div>
@@ -147,15 +155,20 @@ function Home({ data, onOpen }) {
         <div className="kpi"><strong>{reds}</strong><span>红色预警</span></div>
         <div className="kpi"><strong>{diffs}</strong><span>未对齐的对账</span></div>
       </div>
+      <div className="row">
+        <input id="home-filter" value={query} placeholder="按城市、店名、商场筛选" onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 280 }} />
+        <span className="meta">显示 {shown.length} / {data.stores.length} 家</span>
+      </div>
       <div className="grid">
-        {data.stores.map((store) => {
+        {shown.map((store) => {
           const step = data.journey.find((item) => item.store_id === store.id)?.step || 0;
           const title = data.steps.find((item) => item.step === step)?.title || "尚未开始";
           return (
             <article className="card" key={store.id}>
               <span className="tag">{store.region} · {store.city}</span>
               <h3>{store.name}</h3>
-              <p className="meta">{store.mall_name} · {store.keep_decision || "待评估"}</p>
+              <p className="meta">{store.store_type || "精品店"} · {store.mall_name} · {store.keep_decision || "待评估"}</p>
+              {store.address ? <p className="meta">{store.address}</p> : null}
               <p style={{ margin: "10px 0" }}>进行到第 {step} 步：{title}</p>
               <button className="linkish" onClick={() => onOpen(store.id)}>继续这条泳道</button>
             </article>
@@ -167,10 +180,18 @@ function Home({ data, onOpen }) {
 }
 
 function Stores({ data, role, onOpen, onRun, api, busyId }) {
+  const [query, setQuery] = useState("");
+  const shown = data.stores.filter((store) => matchesStore(store, query));
   return (
     <>
       <h2>店览</h2>
-      <p className="lede">一行一家店。销售来自 DW，应付租金和租售比来自租金引擎，续租动作由营运或高管填写。</p>
+      <p className="lede">
+        52 家大陆 Max Mara 主品牌店。附件里写了店名、地址、电话和旗舰类型的，按附件写入；其余地址和电话来自品牌门店名录。名录实际分布在 33 个城市。首都、大兴、白云和首都 T2 这四个机场柜台没有放进来，海口在名录里只有美兰机场，所以保留。没有合同原件的租金、面积和月销售按城市级别估算。前滩太古里附件没有电话，电话留空。
+      </p>
+      <div className="row">
+        <input id="store-filter" value={query} placeholder="按城市、店名、商场、电话筛选" onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
+        <span className="meta">显示 {shown.length} / {data.stores.length} 家</span>
+      </div>
       <div className="panel" style={{ overflowX: "auto" }}>
         <table>
           <thead>
@@ -181,14 +202,19 @@ function Stores({ data, role, onOpen, onRun, api, busyId }) {
             </tr>
           </thead>
           <tbody>
-            {data.stores.map((store) => {
+            {shown.map((store) => {
               const bill = data.bills.find((item) => item.store_id === store.id);
               const sales = data.sales.find((item) => item.store_id === store.id);
               const step = data.journey.find((item) => item.store_id === store.id)?.step || 0;
               return (
                 <tr key={store.id}>
                   <td>{store.brand}</td>
-                  <td><button className="linkish" onClick={() => onOpen(store.id)}>{store.name}</button></td>
+                  <td>
+                    <button className="linkish" onClick={() => onOpen(store.id)}>{store.name}</button>
+                    <div className="meta">{store.store_type || "精品店"} · {store.listed_from || "样本"} · {store.hours || ""}</div>
+                    <div className="meta">{store.address || ""}</div>
+                    <div className="meta">{store.phone || "电话未提供"}</div>
+                  </td>
                   <td>{store.region}</td>
                   <td>{store.city}</td>
                   <td>{store.landlord}</td>
@@ -367,6 +393,9 @@ function Journey({ data, storeId, role, api, onRun, busyId }) {
       <section className="panel">
         <span className="tag">{store.mall_name}</span>
         <h2>{store.name}</h2>
+        <p className="meta">{[store.store_type, store.province, store.city, store.phone, store.hours].filter(Boolean).join(" · ")}</p>
+        {store.address ? <p className="meta">{store.address}</p> : null}
+        {store.data_note ? <p className="meta">{store.data_note}</p> : null}
         <p className="meta">第 {step} / 13 步已完成。下一步只能由泳道上的部门提交。</p>
 
         {next === 5 ? (

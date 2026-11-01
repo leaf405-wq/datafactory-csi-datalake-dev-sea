@@ -43,7 +43,9 @@ public final class AccessServer {
                 text("id"), text("brand"), text("code"), text("name"), text("region"), text("city"),
                 text("mall_name"), text("grade"), dbl("area_sqm"), dbl("selling_area"), dbl("gfa"), dbl("gla"),
                 text("floor"), text("status"), text("keep_decision"), text("lease_end"), text("lifecycle_start"),
-                text("landlord"), text("rank"), text("action_plan"));
+                text("landlord"), text("rank"), text("action_plan"),
+                text("province"), memo("address"), text("phone"), text("hours"),
+                text("store_type"), text("listed_from"), memo("data_note"));
         table("contracts",
                 text("id"), text("store_id"), text("contract_no"), text("status"), memo("raw_text"), text("model"),
                 dbl("fixed_rent"), dbl("rate"), dbl("min_sales"), dbl("min_rent"), dbl("overage_rate"), dbl("cap_amount"),
@@ -125,6 +127,23 @@ public final class AccessServer {
                 }
                 builder.setPrimaryKey("id");
                 builder.toTable(db);
+            }
+        }
+        for (var entry : SCHEMA.entrySet()) {
+            Table existing = db.getTable(entry.getKey());
+            if (existing == null) continue;
+            for (Col col : entry.getValue()) {
+                boolean present = false;
+                for (Column column : existing.getColumns()) {
+                    if (column.getName().equalsIgnoreCase(col.name())) {
+                        present = true;
+                        break;
+                    }
+                }
+                if (present) continue;
+                ColumnBuilder column = new ColumnBuilder(col.name(), col.type());
+                if (col.type() == DataType.TEXT) column.setLength(255);
+                column.addToTable(existing);
             }
         }
     }

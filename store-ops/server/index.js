@@ -5,6 +5,7 @@ import { listenHttp } from "./loopback.js";
 import { all, startAccess, stopAccess } from "./access.js";
 import { SAMPLE_CONTRACT } from "./parser.js";
 import { seedIfEmpty } from "./seed.js";
+import { ensureCatalog } from "./catalog.js";
 import {
   ApiError,
   PERIOD,
@@ -108,6 +109,8 @@ app.get(/^(?!\/api).*/, (_req, res) => {
 const port = Number(process.env.PORT || 3780);
 await startAccess();
 if ((await all("stores")).length === 0) await seedIfEmpty();
+const catalog = await ensureCatalog();
+console.log(`catalog ${catalog.total} added ${catalog.added}`);
 const servers = await listenHttp(app, port);
 console.log(`store-ops http://127.0.0.1:${port}`);
 
