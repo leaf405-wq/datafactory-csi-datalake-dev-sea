@@ -33,6 +33,28 @@ export function incompleteStoreIds(storeIds) {
   return [...storeIds].sort((left, right) => hashText(left) - hashText(right) || left.localeCompare(right)).slice(0, 3);
 }
 
+export const NEW_STORE_ID = "st-houtan";
+
+/** One store each at display steps 10, 11 and 12. Stored step is the last completed step. */
+export function partialAssignments(storeIds) {
+  return incompleteStoreIds(storeIds.filter((id) => id !== NEW_STORE_ID)).map((storeId, index) => ({
+    storeId,
+    step: 9 + index,
+    display: 10 + index,
+  }));
+}
+
+export function scheduledStep(storeId, period, partialByStore = new Map()) {
+  const year = Number(period.year);
+  const month = Number(period.month);
+  if (storeId === NEW_STORE_ID) return year === 2026 && month === 11 ? 4 : null;
+  if (year !== 2026) return null;
+  if (month >= 3 && month <= 8) return 13;
+  if (month === 9 || month === 10) return partialByStore.get(storeId) ?? 13;
+  if (month === 11) return 4;
+  return null;
+}
+
 function mulberry32(seed) {
   let state = seed >>> 0;
   return () => {
@@ -107,28 +129,31 @@ function normalBill(contract, year, month, marchSales, rng) {
 export function planCloseMonths({ storeIds, contracts, marchSales, accounting }) {
   const months = monthsToFill(accounting);
   const march = new Map((marchSales || []).map((row) => [row.store_id, Number(row.sales) || 0]));
+  const partialByStore = new Map(partialAssignments(storeIds).map((row) => [row.storeId, row.step]));
   const rows = [];
   for (const storeId of storeIds) {
+    if (storeId === NEW_STORE_ID) continue;
     const contract = contractOf(contracts, storeId);
     if (!contract) continue;
     for (const period of months) {
       const rng = mulberry32(hashText(`${storeId}-${period.year}-${period.month}`));
       const bill = normalBill(contract, period.year, period.month, march.get(storeId), rng);
+      const step = scheduledStep(storeId, period, partialByStore);
       rows.push({
         storeId,
         year: period.year,
         month: period.month,
-        step: 4,
+        step,
         sales: bill.sales,
         payable: bill.payable,
         rentToSales: bill.rentToSales,
         bill,
-        incomplete: false,
+        incomplete: step < 13,
         alert: null,
       });
     }
   }
-  return { months, incomplete: [], rows };
+  return { months, incomplete: partialAssignments(storeIds).map((row) => row.storeId), rows };
 }
 
 export async function ensureCloseMonths(accounting = accountingPeriod()) {
@@ -286,62 +311,109 @@ export function monthsThrough(calendar, from = { year: 2026, month: 3 }) {
   return months;
 }
 
-const READY_MIGRATION = "老店泳道停在第5步";
+const SCHEDULE_MIGRATION = "泳道按完成档期";
 
-/** Old stores sit on step 5 for every month through the calendar month. */
+/** March–August are finished. September and October leave three stores on steps 10–12. November starts at step 5. */
 export async function ensureReadyLanes(calendar = calendarMonth()) {
-  const [stores, contracts, journeys, alerts, audits] = await Promise.all([
+  const [stores, journeys, alerts, audits, sales, bills, inputs, malls, recons, payments] = await Promise.all([
     all("stores"),
-    all("contracts"),
     all("journey"),
     all("alerts"),
     all("audit_log"),
+    all("sales_monthly"),
+    all("rent_bills"),
+    all("monthly_inputs"),
+    all("mall_bills"),
+    all("reconciliations"),
+    all("payment_requests"),
   ]);
-  const migrated = audits.some((row) => row.action === READY_MIGRATION);
-  const contracted = new Set(
-    contracts.filter((row) => row.status === "EFFECTIVE" && row.store_id).map((row) => row.store_id),
-  );
+  const applied = audits.some((row) => row.action === SCHEDULE_MIGRATION);
+  const open = { year: 2026, month: 11 };
+  const removedAlerts = new Set();
+  const grouped = [
+    ["sales_monthly", sales],
+    ["rent_bills", bills],
+    ["alerts", alerts],
+    ["monthly_inputs", inputs],
+    ["mall_bills", malls],
+    ["reconciliations", recons],
+    ["payment_requests", payments],
+  ];
+  for (const [table, rows] of grouped) {
+    for (const row of rows) {
+      if (row.store_id !== NEW_STORE_ID) continue;
+      const year = Number(row.year);
+      const month = Number(row.month);
+      if (!year || !month || monthIndex({ year, month }) >= monthIndex(open)) continue;
+      await remove(table, row.id);
+      if (table === "alerts") removedAlerts.add(row.id);
+    }
+  }
+
+  const storeIds = stores.map((store) => store.id);
+  const partial = partialAssignments(storeIds);
+  const partialByStore = new Map(partial.map((row) => [row.storeId, row.step]));
   const byId = new Map(journeys.map((row) => [row.id, row]));
   let parked = 0;
-  for (const storeId of stores.map((store) => store.id)) {
-    if (!contracted.has(storeId)) continue;
+  for (const storeId of storeIds) {
     for (const period of monthsThrough(calendar)) {
+      const want = scheduledStep(storeId, period, partialByStore);
       const id = `${storeId}-${period.year}-${period.month}`;
       const existing = byId.get(id);
-      const step = Number(existing?.step) || 0;
-      const next = migrated ? Math.max(step, 4) : 4;
+      if (want == null) {
+        if (existing) {
+          await remove("journey", id);
+          parked += 1;
+        }
+        continue;
+      }
       if (!existing) {
         await insert("journey", {
           id,
           store_id: storeId,
           year: period.year,
           month: period.month,
-          step: 4,
+          step: want,
           updated_at: NOW,
         });
         parked += 1;
         continue;
       }
-      if (next !== step) {
-        await update("journey", id, { step: next, updated_at: NOW });
+      if (!applied && Number(existing.step) !== want) {
+        await update("journey", id, { step: want, updated_at: NOW });
         parked += 1;
       }
     }
   }
-  if (!migrated) {
+  if (!applied) {
     for (const alert of alerts) {
+      if (removedAlerts.has(alert.id)) continue;
       if (alert.dimension === "泳道") await remove("alerts", alert.id);
     }
+    for (const period of [{ year: 2026, month: 9 }, { year: 2026, month: 10 }]) {
+      for (const row of partial) {
+        await insert("alerts", {
+          id: `al-lane-${row.storeId}-${period.year}-${period.month}`,
+          store_id: row.storeId,
+          year: period.year,
+          month: period.month,
+          level: "red",
+          dimension: "泳道",
+          message: `停留在第 ${row.display} 步，计入红色预警。`,
+          status: "OPEN",
+        });
+      }
+    }
     await insert("audit_log", {
-      id: "audit-ready-lane",
+      id: "audit-lane-schedule",
       actor: "系统",
       role: "admin",
-      action: READY_MIGRATION,
-      detail: "已有合同的店，当月、上月和历史月都完成第 4 步，停在第 5 步，可以继续录入。",
+      action: SCHEDULE_MIGRATION,
+      detail: "3月到8月已完成。9月和10月有3家店停在第10、11、12步。当月从第5步开始。",
       created_at: NOW,
     });
   }
-  return { parked, migrated };
+  return { parked, applied, partial: partial.map((row) => row.storeId) };
 }
 
 export async function ensureOpeningLane(calendar = calendarMonth()) {

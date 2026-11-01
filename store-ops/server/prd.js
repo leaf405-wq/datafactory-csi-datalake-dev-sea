@@ -384,6 +384,19 @@ function historyNoteOf(snapshot) {
   return `库里已有 ${keys.join("、")}，未结月份不拿来判断连续 3 月亏损。`;
 }
 
+function openAgeMonths(lifecycleStart, period) {
+  const match = String(lifecycleStart || "").match(/(\d{4})-(\d{2})/);
+  if (!match || !period) return null;
+  return (Number(period.year) - Number(match[1])) * 12 + (Number(period.month) - Number(match[2]));
+}
+
+/** First `limit` operating months of a new contract are ignored. Age 0 is the opening month. */
+function inOpeningGrace(row, period, limit) {
+  if (row.listedFrom !== "新签") return false;
+  const age = openAgeMonths(row.lifecycleStart, period);
+  return age != null && age >= 0 && age < limit;
+}
+
 function monthsUntil(leaseEnd, year, month) {
   const match = String(leaseEnd || "").match(/(\d{4})-(\d{2})/);
   if (!match) return null;
@@ -432,6 +445,8 @@ export function buildDesk(snapshot) {
       phone: store.phone || "",
       sellingArea: num(store.selling_area),
       leaseEnd: store.lease_end,
+      lifecycleStart: store.lifecycle_start || "",
+      listedFrom: store.listed_from || "",
       source: money.source || "",
     };
     if (money.missing || money.sales == null) {
@@ -473,7 +488,7 @@ export function buildDesk(snapshot) {
     };
   });
 
-  const rankedSource = monitor.filter((row) => !row.missing);
+  const rankedSource = monitor.filter((row) => !row.missing && !inOpeningGrace(row, period, 1));
   const salesScore = minMaxScore(rankedSource, "sales");
   const profitScore = minMaxScore(rankedSource, "profit");
   const areaScore = minMaxScore(rankedSource, "productivity");
@@ -545,7 +560,7 @@ export function buildDesk(snapshot) {
     weightedNetProfit: round2(rawGroups.reduce((sum, group) => sum + group.profit, 0)),
   };
 
-  const lease = monitor.map((row) => {
+  const lease = monitor.filter((row) => !inOpeningGrace(row, period, 6)).map((row) => {
     const left = monthsUntil(row.leaseEnd, Number(period.year), Number(period.month));
     const penalty = round2(num(row.fixedRent) * 3);
     const inWindow = left != null && left <= 6;

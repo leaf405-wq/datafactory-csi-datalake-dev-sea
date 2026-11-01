@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Action, WaitingCopy } from "./Action.jsx";
 import { money } from "./api.js";
+import { operatingIn } from "./period.js";
 
 const MATRIX = [
   ["两者取高（主流）", "MAX(固定租金, 销售额×扣点)", "80%以上的购物中心"],
@@ -359,7 +360,7 @@ function summarizeGeo(rows) {
 export function MonitorPage({ api, period, months, accounting, calendar, onPeriod, MonthHistory }) {
   const { desk, error } = useDesk(api, period);
   const [query, setQuery] = useState("");
-  const shown = (desk?.monitor || []).filter((row) => matchesDesk(row, query));
+  const shown = (desk?.monitor || []).filter((row) => operatingIn(row, period) && matchesDesk(row, query));
   return (
     <section id="page-monitor">
       <h2>5.6 营业中店铺每日监控与预警</h2>
@@ -438,7 +439,7 @@ export function MonitorPage({ api, period, months, accounting, calendar, onPerio
 export function CockpitPage({ api, period, months, accounting, calendar, onPeriod, MonthHistory }) {
   const { desk, error } = useDesk(api, period);
   const [query, setQuery] = useState("");
-  const shown = (desk?.monitor || []).filter((row) => matchesDesk(row, query));
+  const shown = (desk?.monitor || []).filter((row) => operatingIn(row, period) && matchesDesk(row, query));
   const shownIds = new Set(shown.map((row) => row.storeId));
   const geoView = summarizeGeo(shown);
   const mallBars = rollupDesk(shown, "mall");

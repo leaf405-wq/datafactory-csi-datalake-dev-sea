@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createApi, money } from "./api.js";
 import { Action, BUSY_HOLD_MS, WaitingCopy } from "./Action.jsx";
 import { CockpitPage, ForecastPage, MonitorPage, RentPage } from "./PrdPages.jsx";
-import { calendarMonth, historyMonths, historyWindow, monthIndex, sameMonth } from "./period.js";
+import { calendarMonth, historyMonths, historyWindow, monthIndex, operatingIn, sameMonth } from "./period.js";
 
 const ROLES = [
   { id: "expansion", label: "拓展部", actor: "拓展专员" },
@@ -256,32 +256,28 @@ function StepRail({ step }) {
 
 function LaneStatus({ step, unfinished }) {
   const completed = Number(step) || 0;
-  if (completed >= 13) return <p className="lane-done">该泳道13步全部完成</p>;
-  if (unfinished) return <p className="lane-alert">未完成 · 红色预警</p>;
+  if (completed >= 13) return <p className="lane-done">已完成13步泳道</p>;
   const current = completed + 1;
   return (
     <>
       <StepRail step={completed} />
       <p className="meta">第 {current} / 13 步</p>
+      {unfinished ? <p className="lane-alert">红色预警</p> : null}
     </>
   );
 }
 
-function LaneLinks({ storeId, accounting, calendar, onOpen, lastDone }) {
+function SelectedLaneLink({ storeId, period, onOpen }) {
   return (
-    <>
-      {lastDone ? <p className="lane-done">完成上月泳道</p> : null}
-      <div className="lane-links">
-        <button type="button" className="linkish" onClick={() => onOpen(storeId, accounting)}>上月这条泳道</button>
-        <button type="button" className="linkish" onClick={() => onOpen(storeId, calendar)}>当月这条泳道</button>
-      </div>
-    </>
+    <div className="lane-links">
+      <button type="button" className="linkish" onClick={() => onOpen(storeId, period)}>该选中月份泳道</button>
+    </div>
   );
 }
 
 function RedQueue({ data, period, stores, onOpen }) {
   const ids = new Set(stores.map((store) => store.id));
-  const rows = data.alerts.filter((alert) => alert.level === "red" && inMonth(alert, period) && ids.has(alert.store_id));
+  const rows = data.alerts.filter((alert) => alert.level === "red" && alert.dimension === "泳道" && inMonth(alert, period) && ids.has(alert.store_id));
   return (
     <section className="panel" id="red-queue">
       <h3>红色预警</h3>
@@ -308,15 +304,16 @@ function RedQueue({ data, period, stores, onOpen }) {
 
 function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, onPreview }) {
   const [query, setQuery] = useState("");
-  const shown = data.stores.filter((store) => matchesStore(store, query));
+  const roster = data.stores.filter((store) => operatingIn(store, period));
+  const shown = roster.filter((store) => matchesStore(store, query));
   const payable = data.bills.filter((bill) => inMonth(bill, period)).reduce((sum, bill) => sum + Number(bill.payable || 0), 0);
-  const reds = data.alerts.filter((alert) => alert.level === "red" && inMonth(alert, period)).length;
+  const reds = data.alerts.filter((alert) => alert.level === "red" && alert.dimension === "泳道" && inMonth(alert, period)).length;
   const diffs = data.reconciliations.filter((row) => row.status === "DIFFERENCE" && inMonth(row, period)).length;
   return (
     <>
       <h2>从签约到收账，按泳道往下走</h2>
       <p className="lede">
-        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。页面默认停在上月。新店会自动走完第 1 步到第 4 步。已有档案的店，当月、上月和历史月都完成第 4 步，停在第 5 步，可以从录入活动继续。
+        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。3 月到 8 月全部走完，显示绿色「已完成13步泳道」。9 月和上月各有 3 家店停在第 10、11、12 步，红色预警是 3。当月从第 5 步开始。上海后滩太古里店是 2026 年 11 月新签，之前的月份不出现。
       </p>
       <div className="kpis">
         <div className="kpi"><strong>{data.stores.length}</strong><span>在册店铺</span></div>
@@ -340,13 +337,7 @@ function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, on
               <p className="meta">{store.store_type || "精品店"} · {store.mall_name} · {store.keep_decision || "待评估"}</p>
               {store.address ? <p className="meta">{store.address}</p> : null}
               <LaneStatus step={step} unfinished={laneUnfinished(data, store.id, period)} />
-              <LaneLinks
-                storeId={store.id}
-                accounting={accounting}
-                calendar={calendar}
-                onOpen={onOpen}
-                lastDone={laneStep(data, store.id, accounting) >= 13}
-              />
+              <SelectedLaneLink storeId={store.id} period={period} onOpen={onOpen} />
             </article>
           );
         })}
@@ -357,12 +348,13 @@ function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, on
 
 function Stores({ data, period, months, accounting, calendar, onPeriod, role, onOpen, onPreview, onRun, api, busyId }) {
   const [query, setQuery] = useState("");
-  const shown = data.stores.filter((store) => matchesStore(store, query));
+  const roster = data.stores.filter((store) => operatingIn(store, period));
+  const shown = roster.filter((store) => matchesStore(store, query));
   return (
     <>
       <h2>店览</h2>
       <p className="lede">
-        52 家大陆 Max Mara 主品牌店。附件里写了店名、地址、电话和旗舰类型的，按附件写入；其余地址和电话来自品牌门店名录。名录实际分布在 33 个城市。首都、大兴、白云和首都 T2 这四个机场柜台没有放进来，海口在名录里只有美兰机场，所以保留。没有合同原件的租金、面积和月销售按城市级别估算。前滩太古里附件没有电话，电话留空。
+        52 家原有店加 2026 年 11 月新签的上海后滩太古里店。11 月之前的月份是 52 / 53 家。附件里写了店名、地址、电话和旗舰类型的，按附件写入；其余地址和电话来自品牌门店名录。名录实际分布在 33 个城市。没有合同原件的租金、面积和月销售按城市级别估算。前滩太古里附件没有电话，电话留空。
       </p>
       <div className="row">
         <input id="store-filter" value={query} placeholder={FILTER_PLACEHOLDER} onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
@@ -416,7 +408,7 @@ function Stores({ data, period, months, accounting, calendar, onPeriod, role, on
                   <td className="num">{sales ? money(sales.sales) : "—"}</td>
                   <td className="num">{bill ? money(bill.payable) : "—"}</td>
                   <td className="num">{bill?.rent_to_sales ? `${(Number(bill.rent_to_sales) * 100).toFixed(1)}%` : "—"}</td>
-                  <td className="col-step">{step >= 13 ? <span className="lane-done">该泳道13步全部完成</span> : laneUnfinished(data, store.id, period) ? <span className="lane-alert">未完成 · 红色预警</span> : (step ? `第 ${Math.min(step + 1, 13)} / 13 步` : "—")}</td>
+                  <td className="col-step">{step >= 13 ? <span className="lane-done">已完成13步泳道</span> : laneUnfinished(data, store.id, period) ? <span className="lane-alert">第 {step + 1} / 13 步 · 红色预警</span> : (step ? `第 ${Math.min(step + 1, 13)} / 13 步` : "—")}</td>
                 </tr>
               );
             })}
@@ -535,7 +527,7 @@ function readBase64(file) {
   });
 }
 
-function Journey({ data, storeId, period, accounting, calendar, onOpen, role, api, onRun, busyId }) {
+function Journey({ data, storeId, period, calendar, onOpen, role, api, onRun, busyId }) {
   const store = data.stores.find((item) => item.id === storeId);
   const step = laneStep(data, storeId, period);
   const editableLane = monthIndex(period) <= monthIndex(calendar);
@@ -586,9 +578,9 @@ function Journey({ data, storeId, period, accounting, calendar, onOpen, role, ap
         <p className="meta">{[store.store_type, store.province, store.city, store.phone, store.hours].filter(Boolean).join(" · ")}</p>
         {store.address ? <p className="meta">{store.address}</p> : null}
         {store.data_note ? <p className="meta">{store.data_note}</p> : null}
-        <p className="meta">{editableLane ? "已有档案的店从第 5 步继续。下一步只能由泳道上的部门提交。" : "还没到这个月。"}</p>
+        <p className="meta">{Number(step) >= 13 ? `${period.year}年${period.month}月这条泳道已经走完。` : (editableLane ? `当前是${period.year}年${period.month}月。下一步只能由泳道上的部门提交。` : "还没到这个月。")}</p>
         <LaneStatus step={step} unfinished={laneUnfinished(data, storeId, period)} />
-        <LaneLinks storeId={store.id} accounting={accounting} calendar={calendar} onOpen={onOpen} lastDone={laneStep(data, storeId, accounting) >= 13} />
+        <SelectedLaneLink storeId={store.id} period={period} onOpen={onOpen} />
 
         {editableLane && next === 5 ? (
           <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.activity(store.id, { activityNote, tempRate, subsidy, ...lanePeriod }), "save-activity"); }}>

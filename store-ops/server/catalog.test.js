@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CATALOG, catalogSummary } from "./catalog.js";
 
-test("大陆 Max Mara 样本覆盖附件里的店，一共 52 家", () => {
+test("大陆 Max Mara 样本覆盖附件里的店，一共 53 家", () => {
   const summary = catalogSummary();
-  assert.equal(summary.stores, 52);
-  assert.equal(new Set(CATALOG.map((item) => item.code)).size, 52);
-  assert.equal(new Set(CATALOG.map((item) => item.name)).size, 52);
+  assert.equal(summary.stores, 53);
+  assert.equal(new Set(CATALOG.map((item) => item.code)).size, 53);
+  assert.equal(new Set(CATALOG.map((item) => item.name)).size, 53);
   assert.equal(summary.fromSheet, 4);
   assert.ok(summary.cities >= 30 && summary.cities <= 40);
   const byName = new Map(CATALOG.map((item) => [item.name, item]));
@@ -24,4 +24,7 @@ test("大陆 Max Mara 样本覆盖附件里的店，一共 52 家", () => {
   assert.equal(byName.get("广州太古汇店").address.includes("天河路383号"), true);
   assert.equal(byName.get("上海兴业太古汇店").flow, "keep");
   assert.equal(byName.get("海口美兰机场店").store_type, "机场店");
+  assert.equal(byName.get("上海后滩太古里店").open_month, 11);
+  assert.equal(byName.get("上海后滩太古里店").open_year, 2026);
+  assert.equal(byName.get("上海后滩太古里店").listed_from, "新签");
 });

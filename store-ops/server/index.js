@@ -161,7 +161,7 @@ console.log(`catalog ${catalog.total} added ${catalog.added}`);
 console.log(`photos ${photos.photos} added ${photos.added} linked ${photos.linked}`);
 console.log(`close months ${close.months.map((item) => item.month).join("/")} added ${close.added}`);
 console.log(`opening lane ${opening.year}-${opening.month} added ${opening.added}`);
-console.log(`ready lanes parked ${ready.parked} migrated ${ready.migrated}`);
+console.log(`ready lanes parked ${ready.parked} applied ${ready.applied}`);
 const servers = await listenHttp(app, port);
 console.log(`store-ops http://127.0.0.1:${port}`);
 

@@ -182,6 +182,41 @@ test("驾驶舱只用一个月的数据，租约未进 6 个月窗口", () => {
   assert.equal(desk.geoSummary.weightedNetProfit, roundSum(desk.geo, "weightedNetProfit"));
 });
 
+test("新店第一个月不进排行，前 6 个月不做闭店考核", () => {
+  const stores = [
+    { id: "st-old", name: "上海兴业太古汇店", region: "华东", city: "上海", lifecycle_start: "2019-03-01", lease_end: "2028-04-30", selling_area: 100 },
+    { id: "st-houtan", name: "上海后滩太古里店", region: "华东", city: "上海", lifecycle_start: "2026-11-01", listed_from: "新签", lease_end: "2029-11-30", selling_area: 80 },
+  ];
+  const contracts = [
+    { store_id: "st-old", status: "EFFECTIVE", fixed_rent: 100000, min_sales: 1000000 },
+    { store_id: "st-houtan", status: "EFFECTIVE", fixed_rent: 88000, min_sales: 860000 },
+  ];
+  function deskAt(year, month) {
+    return buildDesk({
+      period: { year, month },
+      stores,
+      contracts,
+      sales: [],
+      bills: [
+        { store_id: "st-old", year, month, sales: 1200000, payable: 150000, rent_to_sales: 0.12, net_before_vat: 140000 },
+        { store_id: "st-houtan", year, month, sales: 900000, payable: 100000, rent_to_sales: 0.11, net_before_vat: 90000 },
+      ],
+    });
+  }
+  const opening = deskAt(2026, 11);
+  assert.equal(opening.ranking.some((row) => row.storeId === "st-houtan"), false);
+  assert.equal(opening.ranking.some((row) => row.storeId === "st-old"), true);
+  assert.equal(opening.lease.some((row) => row.storeId === "st-houtan"), false);
+  assert.equal(opening.lease.some((row) => row.storeId === "st-old"), true);
+  const second = deskAt(2026, 12);
+  assert.equal(second.ranking.some((row) => row.storeId === "st-houtan"), true);
+  assert.equal(second.lease.some((row) => row.storeId === "st-houtan"), false);
+  const sixth = deskAt(2027, 4);
+  assert.equal(sixth.lease.some((row) => row.storeId === "st-houtan"), false);
+  const seventh = deskAt(2027, 5);
+  assert.equal(seventh.lease.some((row) => row.storeId === "st-houtan"), true);
+});
+
 test("红榜取前 20% 且综合分至少 50，黑榜取后 20%", () => {
   const high = [100, 99, 98, 97, 96, 95, 94, 93, 92, 40].map((score, index) => ({ name: `s${index}`, score }));
   assignBoards(high);

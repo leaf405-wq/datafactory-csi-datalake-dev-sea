@@ -55,6 +55,7 @@ export const CATALOG = [
   { id: "st-oriental", code: "BJ-DF-001", flow: "sample", name: "北京东方广场店", province: "北京", region: "华北", city: "北京", mall_name: "东方新天地", address: "北京市东城区东长安街1号东方广场东方新天地一层A402", phone: "010-85186841", hours: "10:00-22:00", store_type: "精品店", listed_from: "附件", landlord: "香港置地（估算）", floor: "1F", grade: "A", area: 110, selling: 92, gfa: 124, gla: 110, fixed: 100000, rate: 0.11, sales: 1200000, mins: 1100000, prop: 14000, promo: 4000, util: 2500, data_note: "店名、地址、电话按附件。营业时间附件为空，按 10:00-22:00 估算。名录的 52 家里没有这一家。租金、面积、月销售为估算。" },
   { id: "st-qiantan", code: "SH-QT-001", flow: "sample", name: "上海前滩太古里店", province: "上海", region: "华东", city: "上海", mall_name: "前滩太古里", address: "上海市浦东新区东育路前滩太古里", phone: "", hours: "10:00-22:00", store_type: "精品店", listed_from: "附件", landlord: "太古地产", floor: "1F", grade: "A", area: 98, selling: 86, gfa: 110, gla: 98, fixed: 90000, rate: 0.11, sales: 980000, mins: 900000, prop: 12000, promo: 4000, util: 2500, data_note: "店名、商场、地址按附件。附件没有电话，这里留空，不编造号码。营业时间按 10:00-22:00 估算。租金、面积、月销售为估算。" },
   { id: "st-chengdu", code: "CD-TKL-014", flow: "keep", name: "成都太古里店", province: "四川", region: "西南", city: "成都", mall_name: "成都太古里", address: "成都市锦江区中纱帽街8号成都太古里2栋1111、2111号", phone: "028-86666705", hours: "10:00-22:00", store_type: "旗舰店", listed_from: "附件", landlord: "太古地产", floor: "1F", grade: "A", area: 88, selling: 76, gfa: 96, gla: 88, fixed: 90000, rate: 0.1, sales: 620000, mins: 1000000, prop: 9000, promo: 3000, util: 1800, data_note: "店名、地址、营业时间和旗舰类型按附件。电话 028-86666705 来自成都市太古里官网。演示泳道仍用原来的免租合同，不覆盖。" },
+  { id: "st-houtan", code: "SH-HT-053", flow: "new", name: "上海后滩太古里店", province: "上海", region: "华东", city: "上海", mall_name: "后滩太古里", address: "上海市浦东新区后滩太古里", phone: "", hours: "10:00-22:00", store_type: "精品店", listed_from: "新签", landlord: "太古地产", floor: "1F", grade: "A", area: 96, selling: 80, gfa: 108, gla: 96, fixed: 88000, rate: 0.11, sales: 0, mins: 860000, prop: 11000, promo: 4000, util: 2400, open_year: 2026, open_month: 11, data_note: "2026年11月新签。当月从第5步开始。11月之前没有这家店，不进红榜和黑榜，开业前6个月不做闭店考核。" },
 ];
 
 export function catalogSummary() {
@@ -106,14 +107,17 @@ export async function ensureCatalog() {
     const item = CATALOG[index];
     const existing = byCode.get(item.code) || byName.get(item.name);
     if (existing) {
-      await update("stores", existing.id, profile(item));
+      const patch = profile(item);
+      if (item.open_month) patch.lifecycle_start = `${item.open_year}-${pad(item.open_month)}-01`;
+      await update("stores", existing.id, patch);
       byCode.set(item.code, existing);
       byName.set(item.name, existing);
       continue;
     }
-    const endYear = 2027 + (index % 3);
-    const endMonth = (index % 12) + 1;
-    const startYear = 2018 + (index % 6);
+    const endYear = item.open_year ? item.open_year + 3 : 2027 + (index % 3);
+    const endMonth = item.open_month || ((index % 12) + 1);
+    const startYear = item.open_year || (2018 + (index % 6));
+    const startMonth = item.open_month || 3;
     await insert("stores", {
       id: item.id,
       code: item.code,
@@ -126,7 +130,7 @@ export async function ensureCatalog() {
       gfa: item.gfa,
       gla: item.gla,
       lease_end: `${endYear}-${pad(endMonth)}-28`,
-      lifecycle_start: `${startYear}-03-01`,
+      lifecycle_start: `${startYear}-${pad(startMonth)}-01`,
       ...profile(item),
     });
     await insert("contracts", {
@@ -157,22 +161,24 @@ export async function ensureCatalog() {
       confirmed_by: "样本名录",
       created_at: NOW,
     });
-    await insert("sales_monthly", {
-      id: `sa-${item.id}`,
-      store_id: item.id,
-      year: 2026,
-      month: 3,
-      sales: item.sales,
-      source: "样本估算",
-    });
-    await insert("journey", {
-      id: `${item.id}-2026-3`,
-      store_id: item.id,
-      year: 2026,
-      month: 3,
-      step: 4,
-      updated_at: NOW,
-    });
+    if (!item.open_month) {
+      await insert("sales_monthly", {
+        id: `sa-${item.id}`,
+        store_id: item.id,
+        year: 2026,
+        month: 3,
+        sales: item.sales,
+        source: "样本估算",
+      });
+      await insert("journey", {
+        id: `${item.id}-2026-3`,
+        store_id: item.id,
+        year: 2026,
+        month: 3,
+        step: 13,
+        updated_at: NOW,
+      });
+    }
     added += 1;
     byCode.set(item.code, { id: item.id, code: item.code });
     byName.set(item.name, { id: item.id, name: item.name });

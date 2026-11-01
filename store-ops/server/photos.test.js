@@ -11,7 +11,7 @@ test("每家店都有一张不同来源的门店照片，原图在仓库里", ()
     assert.ok(fs.statSync(photoFile(photo)).size > 1000);
   }
   const assigned = photoIdsForCatalog(CATALOG);
-  assert.equal(assigned.length, 52);
+  assert.equal(assigned.length, CATALOG.length);
   assert.equal(new Set(assigned).size, PHOTOS.length);
   const byId = new Map(CATALOG.map((item, index) => [item.id, assigned[index]]));
   assert.equal(byId.get("st-sanlitun"), "ph-facade-night");

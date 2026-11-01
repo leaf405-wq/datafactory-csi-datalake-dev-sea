@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { incompleteStoreIds, monthsToFill, openingLanePlan, planCloseMonths } from "./closeMonths.js";
+import { incompleteStoreIds, monthsToFill, openingLanePlan, partialAssignments, planCloseMonths, scheduledStep } from "./closeMonths.js";
 
 const STORES = ["st-a", "st-b", "st-c", "st-d", "st-e"];
 const CONTRACTS = STORES.map((id, index) => ({
@@ -28,8 +28,11 @@ test("结账月只铺到上月，11 月还没开始", () => {
   assert.equal(monthsToFill({ year: 2026, month: 10 }).some((item) => item.month === 11), false);
 });
 
-test("4 月到 10 月围绕正常结果，老店都停在第 5 步", () => {
-  assert.equal(incompleteStoreIds(STORES).length, 3);
+test("3 月到 8 月全部完成，9 月和 10 月只留 3 家停在第 10 到 12 步", () => {
+  const partial = partialAssignments(STORES);
+  assert.deepEqual(partial.map((row) => row.display), [10, 11, 12]);
+  assert.deepEqual(partial.map((row) => row.step), [9, 10, 11]);
+  const partialIds = new Set(partial.map((row) => row.storeId));
 
   const plan = planCloseMonths({
     storeIds: STORES,
@@ -38,21 +41,28 @@ test("4 月到 10 月围绕正常结果，老店都停在第 5 步", () => {
     accounting: { year: 2026, month: 10 },
   });
   assert.equal(plan.rows.length, STORES.length * 7);
-  assert.equal(plan.rows.some((row) => row.month === 3 || row.month === 11), false);
   for (const row of plan.rows) {
     assert.equal(row.sales >= 900000 * 0.95, true);
     assert.equal(row.rentToSales <= 0.145, true);
-    assert.equal(row.step, 4);
-    assert.equal(row.alert, null);
-    assert.equal(row.incomplete, false);
   }
-  const april = plan.rows.find((row) => row.storeId === "st-b" && row.month === 4);
-  const may = plan.rows.find((row) => row.storeId === "st-b" && row.month === 5);
-  assert.notEqual(april.sales, may.sales);
+  for (const month of [4, 5, 6, 7, 8]) {
+    assert.equal(plan.rows.filter((row) => row.month === month).every((row) => row.step === 13), true);
+  }
+  for (const month of [9, 10]) {
+    const open = plan.rows.filter((row) => row.month === month && row.step < 13);
+    assert.equal(open.length, 3);
+    assert.deepEqual(open.map((row) => row.step).sort((a, b) => a - b), [9, 10, 11]);
+    assert.equal(open.every((row) => partialIds.has(row.storeId)), true);
+  }
+  assert.equal(scheduledStep("st-a", { year: 2026, month: 3 }), 13);
+  assert.equal(scheduledStep("st-houtan", { year: 2026, month: 10 }), null);
+  assert.equal(scheduledStep("st-houtan", { year: 2026, month: 11 }), 4);
+  assert.equal(scheduledStep("st-a", { year: 2026, month: 11 }), 4);
 });
 
 test("当月老店完成第 4 步，停在第 5 步，不写销售", () => {
   const rows = openingLanePlan(STORES, { year: 2026, month: 11 });
   assert.equal(rows.length, STORES.length);
   assert.equal(rows.every((row) => row.step === 4 && row.month === 11 && row.sales == null), true);
+  assert.equal(incompleteStoreIds(STORES).length, 3);
 });

@@ -21,6 +21,19 @@ export function monthIndex(period) {
   return Number(period.year) * 12 + Number(period.month);
 }
 
+export function openMonthOf(record) {
+  const raw = record?.lifecycle_start || record?.lifecycleStart || "";
+  const match = String(raw).match(/(\d{4})-(\d{2})/);
+  if (!match) return null;
+  return { year: Number(match[1]), month: Number(match[2]) };
+}
+
+export function operatingIn(record, period) {
+  const open = openMonthOf(record);
+  if (!open || !period) return true;
+  return monthIndex(period) >= monthIndex(open);
+}
+
 export function sameMonth(left, right) {
   return Number(left?.year) === Number(right?.year) && Number(left?.month) === Number(right?.month);
 }
