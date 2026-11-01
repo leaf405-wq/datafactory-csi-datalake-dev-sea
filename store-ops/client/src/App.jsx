@@ -2,12 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createApi, money } from "./api.js";
 import { Action, BUSY_HOLD_MS, WaitingCopy } from "./Action.jsx";
 import { CockpitPage, ForecastPage, MonitorPage, RentPage } from "./PrdPages.jsx";
+import { historyMonths, historyWindow, sameMonth } from "./period.js";
 
 const ROLES = [
   { id: "expansion", label: "拓展部", actor: "拓展专员" },
   { id: "ops", label: "营运部", actor: "营运经理" },
   { id: "finance", label: "财务部", actor: "财务专员" },
   { id: "executive", label: "高管", actor: "区域负责人" },
+];
+
+const FILTER_PLACEHOLDER = "按区域、城市、店名、商场、电话筛选";
+const STEP_COLORS = [
+  "#8c3f1c", "#1d6b45", "#1f4e79", "#8a5a00", "#6b3fa0",
+  "#9d2c2c", "#0f6e6e", "#3d4c8a", "#a15c38", "#2f6f3e",
+  "#7a3e5c", "#3e5f8a", "#5c4a1f",
 ];
 
 const ACTOR = {
@@ -23,6 +31,7 @@ export default function App() {
   const [page, setPage] = useState("home");
   const [storeId, setStoreId] = useState("");
   const [photoStoreId, setPhotoStoreId] = useState("");
+  const [period, setPeriod] = useState(null);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
@@ -78,6 +87,12 @@ export default function App() {
     }
   }
 
+  const accounting = data?.period || null;
+  const viewed = period || accounting;
+  const months = data ? historyMonths([
+    ...data.journey, ...data.sales, ...data.bills, ...data.reconciliations, ...data.payments,
+  ], accounting) : [];
+
   function openStore(id) {
     setStoreId(id);
     setPhotoStoreId(id);
@@ -90,7 +105,7 @@ export default function App() {
         <div className="brand">
           <img className="wordmark" src="/maxmara-wordmark.png" alt="Max Mara" />
           <div>
-            <small>Web 4.0 · 账期 {data ? `${data.period.year}年${data.period.month}月` : ""}</small>
+            <small>Web 4.0 · 账期 {viewed ? `${viewed.year}年${viewed.month}月${sameMonth(viewed, accounting) ? " · 上月" : ""}` : ""}</small>
             <h1>零售经营系统</h1>
           </div>
         </div>
@@ -119,18 +134,22 @@ export default function App() {
         <main className="main">
           {error ? <div className="error">{error}</div> : null}
           {!data ? <p>{error ? "接口恢复后会自动再打开 Access 数据库。" : <WaitingCopy text="正在打开 Access 数据库" active />}</p> : null}
-          {data && page === "home" ? <Home data={data} onOpen={openStore} onPreview={setPhotoStoreId} /> : null}
+          {data && page === "home" ? (
+            <Home data={data} period={viewed} months={months} accounting={accounting} onPeriod={setPeriod} onOpen={openStore} onPreview={setPhotoStoreId} />
+          ) : null}
           {data && page === "stores" ? (
-            <Stores data={data} role={role} onOpen={openStore} onPreview={setPhotoStoreId} onRun={run} api={api} busyId={busyId} />
+            <Stores data={data} period={viewed} months={months} accounting={accounting} onPeriod={setPeriod} role={role} onOpen={openStore} onPreview={setPhotoStoreId} onRun={run} api={api} busyId={busyId} />
           ) : null}
           {data && page === "contract" ? <ContractDesk api={api} onRun={run} onOpen={openStore} busyId={busyId} /> : null}
           {data && page === "journey" ? (
-            <Journey data={data} storeId={storeId} role={role} api={api} onRun={run} busyId={busyId} />
+            <Journey data={data} storeId={storeId} period={viewed} role={role} api={api} onRun={run} busyId={busyId} />
           ) : null}
           {data && page === "rent" ? <RentPage api={api} onRun={run} busyId={busyId} /> : null}
           {data && page === "forecast" ? <ForecastPage api={api} onRun={run} busyId={busyId} /> : null}
-          {data && page === "monitor" ? <MonitorPage api={api} /> : null}
-          {data && page === "cockpit" ? <CockpitPage api={api} /> : null}
+          {data && page === "monitor" ? <MonitorPage api={api} period={viewed} /> : null}
+          {data && page === "cockpit" ? (
+            <CockpitPage api={api} period={viewed} months={months} accounting={accounting} onPeriod={setPeriod} MonthHistory={MonthHistory} />
+          ) : null}
         </main>
       </div>
     </div>
@@ -139,7 +158,7 @@ export default function App() {
 
 function matchesStore(store, query) {
   if (!query) return true;
-  const blob = [store.name, store.city, store.province, store.mall_name, store.address, store.phone, store.store_type].join(" ");
+  const blob = [store.region, store.city, store.name, store.mall_name, store.phone].filter(Boolean).join(" ");
   return blob.toLowerCase().includes(query.trim().toLowerCase());
 }
 
@@ -161,17 +180,77 @@ function SidePhoto({ data, storeId }) {
   );
 }
 
-function Home({ data, onOpen, onPreview }) {
+function inMonth(row, period) {
+  return Number(row.year) === Number(period.year) && Number(row.month) === Number(period.month);
+}
+
+function laneStep(data, storeId, period) {
+  return data.journey.find((item) => item.store_id === storeId && inMonth(item, period))?.step || 0;
+}
+
+function MonthHistory({ months, selected, accounting, onPeriod }) {
+  const windowed = historyWindow(months, selected, 6);
+  return (
+    <div className="month-history" aria-label="经营历史记录（按月）">
+      <span className="meta">经营历史记录（按月）</span>
+      {windowed.hasPrev ? (
+        <button type="button" className="ghost" onClick={() => onPeriod(windowed.prevMonth)}>...(前一页)</button>
+      ) : null}
+      {windowed.visible.map((item) => (
+        <button
+          type="button"
+          key={`${item.year}-${item.month}`}
+          className={sameMonth(item, selected) ? "active" : "ghost"}
+          onClick={() => onPeriod(item)}
+        >
+          {sameMonth(item, accounting) ? "当月" : `${item.year}年${item.month}月`}
+        </button>
+      ))}
+      {windowed.hasNext ? (
+        <button type="button" className="ghost" onClick={() => onPeriod(windowed.nextMonth)}>....(后一页)</button>
+      ) : null}
+    </div>
+  );
+}
+
+function LaneSteps({ step }) {
+  const done = Number(step) >= 13;
+  return (
+    <>
+      <div className="lane-steps" aria-label={done ? "该月泳道已完成" : `进行到第 ${step} 步`}>
+        {STEP_COLORS.map((color, index) => {
+          const number = index + 1;
+          const reached = Number(step) >= number;
+          return (
+            <span
+              key={number}
+              className={reached ? "done" : "todo"}
+              style={reached
+                ? { background: color, borderColor: color, color: "#fff" }
+                : { borderColor: color, color }}
+              title={`第 ${number} 步`}
+            >
+              {number}
+            </span>
+          );
+        })}
+      </div>
+      {done ? <p className="lane-done">该月泳道已完成</p> : <p className="meta">{Number(step) > 0 ? `进行到第 ${step} 步` : "本月尚未开始"}</p>}
+    </>
+  );
+}
+
+function Home({ data, period, months, accounting, onPeriod, onOpen, onPreview }) {
   const [query, setQuery] = useState("");
   const shown = data.stores.filter((store) => matchesStore(store, query));
-  const payable = data.bills.reduce((sum, bill) => sum + Number(bill.payable || 0), 0);
-  const reds = data.alerts.filter((alert) => alert.level === "red").length;
-  const diffs = data.reconciliations.filter((row) => row.status === "DIFFERENCE").length;
+  const payable = data.bills.filter((bill) => inMonth(bill, period)).reduce((sum, bill) => sum + Number(bill.payable || 0), 0);
+  const reds = data.alerts.filter((alert) => alert.level === "red" && inMonth(alert, period)).length;
+  const diffs = data.reconciliations.filter((row) => row.status === "DIFFERENCE" && inMonth(row, period)).length;
   return (
     <>
       <h2>从签约到收账，按泳道往下走</h2>
       <p className="lede">
-        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上当月活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。下面是大陆 Max Mara 主品牌样本店，每家都能打开自己的泳道。
+        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上当月活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。下面是大陆 Max Mara 主品牌样本店，每家都能打开自己的泳道。日历上的 11 月仍结 10 月，所以当月是上一个自然月。
       </p>
       <div className="kpis">
         <div className="kpi"><strong>{data.stores.length}</strong><span>在册店铺</span></div>
@@ -180,21 +259,21 @@ function Home({ data, onOpen, onPreview }) {
         <div className="kpi"><strong>{diffs}</strong><span>未对齐的对账</span></div>
       </div>
       <div className="row">
-        <input id="home-filter" value={query} placeholder="按城市、店名、商场筛选" onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 280 }} />
+        <input id="home-filter" value={query} placeholder={FILTER_PLACEHOLDER} onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
         <span className="meta">显示 {shown.length} / {data.stores.length} 家</span>
+        <MonthHistory months={months} selected={period} accounting={accounting} onPeriod={onPeriod} />
       </div>
       <div className="grid">
         {shown.map((store) => {
-          const step = data.journey.find((item) => item.store_id === store.id)?.step || 0;
-          const title = data.steps.find((item) => item.step === step)?.title || "尚未开始";
+          const step = laneStep(data, store.id, period);
           return (
             <article className="card" key={store.id} onMouseEnter={() => onPreview(store.id)}>
               <span className="tag">{store.region} · {store.city}</span>
               <h3>{store.name}</h3>
               <p className="meta">{store.store_type || "精品店"} · {store.mall_name} · {store.keep_decision || "待评估"}</p>
               {store.address ? <p className="meta">{store.address}</p> : null}
-              <p style={{ margin: "10px 0" }}>进行到第 {step} 步：{title}</p>
-              <button className="linkish" onClick={() => onOpen(store.id)}>继续这条泳道</button>
+              <LaneSteps step={step} />
+              <button className="linkish" onClick={() => onOpen(store.id)}>上月 / 继续当月这条泳道</button>
             </article>
           );
         })}
@@ -203,7 +282,7 @@ function Home({ data, onOpen, onPreview }) {
   );
 }
 
-function Stores({ data, role, onOpen, onPreview, onRun, api, busyId }) {
+function Stores({ data, period, months, accounting, onPeriod, role, onOpen, onPreview, onRun, api, busyId }) {
   const [query, setQuery] = useState("");
   const shown = data.stores.filter((store) => matchesStore(store, query));
   return (
@@ -213,23 +292,24 @@ function Stores({ data, role, onOpen, onPreview, onRun, api, busyId }) {
         52 家大陆 Max Mara 主品牌店。附件里写了店名、地址、电话和旗舰类型的，按附件写入；其余地址和电话来自品牌门店名录。名录实际分布在 33 个城市。首都、大兴、白云和首都 T2 这四个机场柜台没有放进来，海口在名录里只有美兰机场，所以保留。没有合同原件的租金、面积和月销售按城市级别估算。前滩太古里附件没有电话，电话留空。
       </p>
       <div className="row">
-        <input id="store-filter" value={query} placeholder="按城市、店名、商场、电话筛选" onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
+        <input id="store-filter" value={query} placeholder={FILTER_PLACEHOLDER} onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
         <span className="meta">显示 {shown.length} / {data.stores.length} 家</span>
+        <MonthHistory months={months} selected={period} accounting={accounting} onPeriod={onPeriod} />
       </div>
       <div className="panel" style={{ overflowX: "auto" }}>
         <table>
           <thead>
             <tr>
-              {["品牌", "店铺", "区域", "城市", "业主", "租约到期", "动作", "3月销售", "应付租金", "租售比", "步骤"].map((name) => (
+              {["品牌", "店铺", "区域", "城市", "业主", "租约到期", "动作", `${period.month}月销售`, "应付租金", "租售比", "步骤"].map((name) => (
                 <th key={name}>{name}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {shown.map((store) => {
-              const bill = data.bills.find((item) => item.store_id === store.id);
-              const sales = data.sales.find((item) => item.store_id === store.id);
-              const step = data.journey.find((item) => item.store_id === store.id)?.step || 0;
+              const bill = data.bills.find((item) => item.store_id === store.id && inMonth(item, period));
+              const sales = data.sales.find((item) => item.store_id === store.id && inMonth(item, period));
+              const step = laneStep(data, store.id, period);
               return (
                 <tr key={store.id} onMouseEnter={() => onPreview(store.id)}>
                   <td>{store.brand}</td>
@@ -382,13 +462,14 @@ function readBase64(file) {
   });
 }
 
-function Journey({ data, storeId, role, api, onRun, busyId }) {
+function Journey({ data, storeId, period, role, api, onRun, busyId }) {
   const store = data.stores.find((item) => item.id === storeId);
-  const step = data.journey.find((item) => item.store_id === storeId)?.step || 0;
-  const bill = data.bills.find((item) => item.store_id === storeId);
-  const alerts = data.alerts.filter((item) => item.store_id === storeId);
-  const recon = data.reconciliations.find((item) => item.store_id === storeId);
-  const payment = data.payments.find((item) => item.store_id === storeId);
+  const step = laneStep(data, storeId, period);
+  const currentLane = sameMonth(period, data.period);
+  const bill = data.bills.find((item) => item.store_id === storeId && inMonth(item, period));
+  const alerts = data.alerts.filter((item) => item.store_id === storeId && inMonth(item, period));
+  const recon = data.reconciliations.find((item) => item.store_id === storeId && inMonth(item, period));
+  const payment = data.payments.find((item) => item.store_id === storeId && inMonth(item, period));
   const [activityNote, setActivityNote] = useState("本月无特殊活动");
   const [tempRate, setTempRate] = useState("");
   const [subsidy, setSubsidy] = useState("0");
@@ -403,16 +484,25 @@ function Journey({ data, storeId, role, api, onRun, busyId }) {
   return (
     <div className="work">
       <ol className="steps">
-        {data.steps.map((item) => (
-          <li key={item.step} className={item.step < next ? "done" : item.step === next ? "now" : ""}>
-            <span className="dot">{item.step}</span>
-            <span>
-              {item.title}
-              <br />
-              <small>{ACTOR[item.from]} → {ACTOR[item.to]}</small>
-            </span>
-          </li>
-        ))}
+        {data.steps.map((item) => {
+          const color = STEP_COLORS[item.step - 1];
+          const reached = item.step <= step;
+          return (
+            <li key={item.step} className={item.step < next ? "done" : item.step === next ? "now" : ""}>
+              <span
+                className="dot"
+                style={reached
+                  ? { background: color, borderColor: color, color: "#fff" }
+                  : { borderColor: color, color }}
+              >{item.step}</span>
+              <span>
+                {item.title}
+                <br />
+                <small>{ACTOR[item.from]} → {ACTOR[item.to]}</small>
+              </span>
+            </li>
+          );
+        })}
       </ol>
       <section className="panel">
         <span className="tag">{store.mall_name}</span>
@@ -420,9 +510,11 @@ function Journey({ data, storeId, role, api, onRun, busyId }) {
         <p className="meta">{[store.store_type, store.province, store.city, store.phone, store.hours].filter(Boolean).join(" · ")}</p>
         {store.address ? <p className="meta">{store.address}</p> : null}
         {store.data_note ? <p className="meta">{store.data_note}</p> : null}
-        <p className="meta">第 {step} / 13 步已完成。下一步只能由泳道上的部门提交。</p>
+        <p className="meta">第 {step} / 13 步已完成。{currentLane ? "下一步只能由泳道上的部门提交。" : "这是历史月份，只可查看。"}</p>
+        <LaneSteps step={step} />
+        {!currentLane ? <p className="meta">上月 / 继续当月这条泳道请切回「当月」。</p> : null}
 
-        {next === 5 ? (
+        {currentLane && next === 5 ? (
           <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.activity(store.id, { activityNote, tempRate, subsidy }), "save-activity"); }}>
             <h3>5　录入当月活动</h3>
             <label htmlFor="activity-note">特殊活动</label>
@@ -440,7 +532,7 @@ function Journey({ data, storeId, role, api, onRun, busyId }) {
           </form>
         ) : null}
 
-        {next === 6 || next === 7 ? (
+        {currentLane && (next === 6 || next === 7) ? (
           <div>
             <h3>6–7　接收 DW 销售并计算</h3>
             <p className="lede">系统读取本月 DW 销售，按免租、两者取高、附加费、补贴、增值税的顺序出账，并把距保底过大写成预警。</p>
@@ -454,7 +546,7 @@ function Journey({ data, storeId, role, api, onRun, busyId }) {
 
         {bill && step >= 7 ? <BillTrace bill={bill} alerts={alerts} /> : null}
 
-        {next === 8 ? (
+        {currentLane && next === 8 ? (
           <div>
             <h3>8　商场对账单已送到财务</h3>
             <div className="row">
@@ -465,7 +557,7 @@ function Journey({ data, storeId, role, api, onRun, busyId }) {
           </div>
         ) : null}
 
-        {next >= 9 && next <= 11 ? (
+        {currentLane && next >= 9 && next <= 11 ? (
           <form onSubmit={(event) => { event.preventDefault(); onRun(() => api.reconcile(store.id, mall), "reconcile"); }}>
             <h3>9–11　上传商场账单并自动比对</h3>
             {["base_rent", "commission_rent", "property_fee", "promo_fee", "utility_fee", "card_fee", "advance_fee", "total"].map((key) => (
@@ -493,7 +585,7 @@ function Journey({ data, storeId, role, api, onRun, busyId }) {
 
         {recon && step >= 11 ? <Recon recon={recon} /> : null}
 
-        {next === 12 ? (
+        {currentLane && next === 12 ? (
           <div>
             <h3>12　确认无误，或发差异函</h3>
             <label>原因</label>
@@ -509,7 +601,7 @@ function Journey({ data, storeId, role, api, onRun, busyId }) {
           </div>
         ) : null}
 
-        {next === 13 ? (
+        {currentLane && next === 13 ? (
           <div>
             <h3>13　生成付款申请</h3>
             <div className="row">
@@ -522,7 +614,7 @@ function Journey({ data, storeId, role, api, onRun, busyId }) {
 
         {payment ? <p className="ok" style={{ marginTop: 14 }}>付款申请 {money(payment.amount)} 元，状态 {payment.status}。</p> : null}
         {step >= 13 ? <p className="ok" style={{ marginTop: 14 }}>这条泳道本月已走完。</p> : null}
-        {next > 13 ? null : next < 5 ? <p className="meta">合同档案已经生成。请把身份切到营运部，录入第 5 步。</p> : null}
+        {currentLane && next < 5 ? <p className="meta">本月泳道还停在合同阶段。已有档案的店，从第 5 步录入当月活动。</p> : null}
       </section>
     </div>
   );

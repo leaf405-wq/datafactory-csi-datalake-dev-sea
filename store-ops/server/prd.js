@@ -372,6 +372,18 @@ function economicsOf(snapshot, store) {
   };
 }
 
+function historyNoteOf(snapshot) {
+  const keys = [...new Set((snapshot.bills || []).map((item) => {
+    const year = Number(item.year);
+    const month = Number(item.month);
+    if (!year || month < 1 || month > 12) return "";
+    return `${year}-${String(month).padStart(2, "0")}`;
+  }).filter(Boolean))].sort();
+  if (keys.length === 1) return `库里只有 ${keys[0]} 一个月，不能判断连续 3 月亏损，也没有租金占比的历史曲线。`;
+  if (!keys.length) return "库里还没有月结账单，不能判断连续 3 月亏损，也没有租金占比的历史曲线。";
+  return `库里已有 ${keys.join("、")}，未结月份不拿来判断连续 3 月亏损。`;
+}
+
 function monthsUntil(leaseEnd, year, month) {
   const match = String(leaseEnd || "").match(/(\d{4})-(\d{2})/);
   if (!match) return null;
@@ -480,6 +492,48 @@ export function buildDesk(snapshot) {
     }));
   }
 
+  const geoRows = new Map();
+  for (const row of rankedSource) {
+    const region = row.region || "未填区域";
+    const city = row.city || "未填城市";
+    const key = `${region} / ${city}`;
+    const current = geoRows.get(key) || {
+      label: key,
+      region,
+      city,
+      stores: 0,
+      sales: 0,
+      weighted: 0,
+      profit: 0,
+    };
+    const sales = num(row.sales);
+    const profit = num(row.profit);
+    current.stores += 1;
+    current.sales += sales;
+    current.profit += profit;
+    current.weighted += profit * sales;
+    geoRows.set(key, current);
+  }
+  const geo = [...geoRows.values()]
+    .map((group) => ({
+      label: group.label,
+      region: group.region,
+      city: group.city,
+      stores: group.stores,
+      sales: round2(group.sales),
+      weightedAverageProfit: group.sales > 0 ? round2(group.weighted / group.sales) : null,
+      weightedNetProfit: round2(group.profit),
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label, "zh"));
+  const rawGroups = [...geoRows.values()];
+  const geoSales = rawGroups.reduce((sum, group) => sum + group.sales, 0);
+  const geoSummary = {
+    regions: new Set(geo.map((group) => group.region)).size,
+    cities: new Set(geo.map((group) => group.city)).size,
+    weightedAverageProfit: geoSales > 0 ? round2(rawGroups.reduce((sum, group) => sum + group.weighted, 0) / geoSales) : null,
+    weightedNetProfit: round2(rawGroups.reduce((sum, group) => sum + group.profit, 0)),
+  };
+
   const lease = monitor.map((row) => {
     const left = monthsUntil(row.leaseEnd, Number(period.year), Number(period.month));
     const penalty = round2(num(row.fixedRent) * 3);
@@ -510,13 +564,15 @@ export function buildDesk(snapshot) {
     margin: ASSUMED_MARGIN,
     marginNote: "毛利按销售额的 55% 估算。人事和 ERP 没有接入，人工和折旧没有从这里扣掉。",
     brdNote: "月结泳道写在账单上的预警仍用 BRD：租售比超过 25% 为红。这一页按 PRD 5.6 另算，不改那条规则。",
-    historyNote: "库里只有 2026-03 一个月，不能判断连续 3 月亏损，也没有租金占比的历史曲线。",
+    historyNote: historyNoteOf(snapshot),
     monitor,
     ranking,
     rentBars: {
       malls: rollup("mall"),
       regions: rollup("region"),
     },
+    geo,
+    geoSummary,
     lease,
     malls: rollup("mall").map((group) => ({
       ...group,

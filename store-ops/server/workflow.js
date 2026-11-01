@@ -8,8 +8,9 @@ import {
   diagnoseHealth,
   inRentFreePeriod,
 } from "./rentEngine.js";
+import { accountingPeriod } from "../client/src/period.js";
 
-export const PERIOD = { year: 2026, month: 3 };
+export const PERIOD = accountingPeriod();
 export const ROLE_LABEL = {
   expansion: "拓展部",
   ops: "营运部",

@@ -66,12 +66,14 @@ function Level({ level, children }) {
   return <span className={`tag ${level || ""}`}>{children}</span>;
 }
 
-function useDesk(api) {
+function useDesk(api, period) {
   const [desk, setDesk] = useState(null);
   const [error, setError] = useState("");
+  const key = period ? `${period.year}-${period.month}` : "";
   useEffect(() => {
     let stop = false;
-    api.desk()
+    setDesk(null);
+    api.desk(period || null)
       .then((body) => {
         if (!stop) setDesk(body);
       })
@@ -81,7 +83,7 @@ function useDesk(api) {
     return () => {
       stop = true;
     };
-  }, [api]);
+  }, [api, key]);
   return { desk, error };
 }
 
@@ -288,8 +290,8 @@ export function ForecastPage({ api, onRun, busyId }) {
   );
 }
 
-export function MonitorPage({ api }) {
-  const { desk, error } = useDesk(api);
+export function MonitorPage({ api, period }) {
+  const { desk, error } = useDesk(api, period);
   return (
     <section id="page-monitor">
       <h2>5.6 营业中店铺每日监控与预警</h2>
@@ -360,15 +362,49 @@ export function MonitorPage({ api }) {
   );
 }
 
-export function CockpitPage({ api }) {
-  const { desk, error } = useDesk(api);
+export function CockpitPage({ api, period, months, accounting, onPeriod, MonthHistory }) {
+  const { desk, error } = useDesk(api, period);
   return (
     <section id="page-cockpit">
       <h2>5.8 多维报表与管理驾驶舱</h2>
-      <p className="lede">给区域经理、财务、营运总监、拓展和高管看同一套 2026 年 3 月的数。没有历史月，趋势图只画当月。</p>
+      <p className="lede">给区域经理、财务、营运总监、拓展和高管看同一套账期的数。区域和城市合在一列，利润按销售额加权。</p>
       {error ? <div className="error">{error}</div> : null}
       {!desk ? <p><WaitingCopy text="正在汇总报表" active /></p> : (
         <>
+          <h3>区域 / 城市</h3>
+          <p className="meta">适用角色：区域经理 / 财务 / 高管。平均加权利润 = Σ(店铺净利润 × 店铺销售额) / Σ销售额。加权净利润 = Σ店铺净利润。毛利仍按销售额的 55% 估算。</p>
+          {MonthHistory ? (
+            <div className="row">
+              <MonthHistory months={months} selected={period} accounting={accounting} onPeriod={onPeriod} />
+            </div>
+          ) : null}
+          <div className="kpis">
+            <div className="kpi"><strong>{desk.geoSummary.regions} / {desk.geoSummary.cities}</strong><span>区域 / 城市</span></div>
+            <div className="kpi"><strong>{desk.geo.length ? (desk.geoSummary.weightedAverageProfit == null ? "—" : money(desk.geoSummary.weightedAverageProfit)) : "—"}</strong><span>平均加权利润</span></div>
+            <div className="kpi"><strong>{desk.geo.length ? money(desk.geoSummary.weightedNetProfit) : "—"}</strong><span>加权净利润</span></div>
+          </div>
+          {desk.geo.length === 0 ? <p className="meta">当月还没有销售，区域 / 城市的加权要等本月账单。切到有账单的历史月份可以看到加权结果。</p> : null}
+          <div className="panel" style={{ overflowX: "auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  {["区域/城市", "店铺数", "销售额", "平均加权利润", "加权净利润"].map((name) => <th key={name}>{name}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {desk.geo.map((row) => (
+                  <tr key={row.label}>
+                    <td>{row.label}</td>
+                    <td className="num">{row.stores}</td>
+                    <td className="num">{money(row.sales)}</td>
+                    <td className="num">{row.weightedAverageProfit == null ? "—" : money(row.weightedAverageProfit)}</td>
+                    <td className="num">{money(row.weightedNetProfit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           <h3>单店损益表</h3>
           <p className="meta">适用角色：区域经理 / 财务。{desk.marginNote}</p>
           <div className="panel" style={{ overflowX: "auto" }}>

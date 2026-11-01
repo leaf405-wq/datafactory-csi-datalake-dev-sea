@@ -173,4 +173,31 @@ test("驾驶舱只用一个月的数据，租约未进 6 个月窗口", () => {
   assert.equal(desk.ranking.every((row) => row.staffEfficiency == null), true);
   assert.match(desk.historyNote, /只有 2026-03/);
   assert.equal(desk.malls[0].mallTotalUnknown, true);
+  const shanghai = desk.geo.find((row) => row.label === "华东 / 上海");
+  assert.equal(shanghai.stores, 1);
+  assert.equal(shanghai.weightedNetProfit, taikoo.profit);
+  assert.equal(shanghai.weightedAverageProfit, taikoo.profit);
+  assert.equal(desk.geoSummary.regions, 2);
+  assert.equal(desk.geoSummary.cities, 2);
+  assert.equal(desk.geoSummary.weightedNetProfit, roundSum(desk.geo, "weightedNetProfit"));
 });
+
+test("当月没有账单时，区域加权利润留空", () => {
+  const desk = buildDesk({
+    period: { year: 2026, month: 10 },
+    stores: [{ id: "st-taikoo", name: "上海兴业太古汇店", region: "华东", city: "上海" }],
+    contracts: [],
+    sales: [],
+    bills: [{ store_id: "st-taikoo", year: 2026, month: 3, sales: 100, payable: 10, rent_to_sales: 0.1, net_before_vat: 10 }],
+  });
+  assert.equal(desk.geo.length, 0);
+  assert.equal(desk.geoSummary.regions, 0);
+  assert.equal(desk.geoSummary.cities, 0);
+  assert.equal(desk.geoSummary.weightedAverageProfit, null);
+  assert.equal(desk.geoSummary.weightedNetProfit, 0);
+  assert.match(desk.historyNote, /只有 2026-03/);
+});
+
+function roundSum(rows, key) {
+  return Math.round(rows.reduce((sum, row) => sum + Number(row[key] || 0), 0) * 100) / 100;
+}

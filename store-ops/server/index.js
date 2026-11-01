@@ -72,7 +72,13 @@ app.get("/api/photos/:id", async (req, res) => {
 });
 app.post("/api/rent/preview", wrap(async (req) => previewRent(req.body || {})));
 app.post("/api/forecast", wrap(async (req) => forecastStore(req.body || {})));
-app.get("/api/prd/desk", wrap(async () => buildDesk(await snapshot())));
+app.get("/api/prd/desk", wrap(async (req) => {
+  const snap = await snapshot();
+  const year = Number(req.query.year);
+  const month = Number(req.query.month);
+  const period = year && month >= 1 && month <= 12 ? { year, month } : snap.period;
+  return buildDesk({ ...snap, period });
+}));
 app.post("/api/contracts/import", wrap(async (req) => importContract({
   ...actor(req),
   filename: req.body.filename,
