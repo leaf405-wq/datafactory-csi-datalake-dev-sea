@@ -6,6 +6,7 @@ import { all, startAccess, stopAccess } from "./access.js";
 import { SAMPLE_CONTRACT } from "./parser.js";
 import { seedIfEmpty } from "./seed.js";
 import { ensureCatalog } from "./catalog.js";
+import { ensurePhotos, readPhoto } from "./photos.js";
 import {
   ApiError,
   PERIOD,
@@ -55,6 +56,20 @@ function wrap(handler) {
 app.get("/api/health", wrap(async () => ({ ok: true, period: PERIOD })));
 app.get("/api/sample-contract", wrap(async () => ({ text: SAMPLE_CONTRACT })));
 app.get("/api/snapshot", wrap(async () => snapshot()));
+app.get("/api/photos/:id", async (req, res) => {
+  try {
+    const photo = await readPhoto(req.params.id);
+    if (!photo) {
+      res.status(404).json({ error: "没有这张门店照片" });
+      return;
+    }
+    res.setHeader("Content-Type", photo.mime);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send(photo.body);
+  } catch (error) {
+    res.status(500).json({ error: error.message || "照片读取失败" });
+  }
+});
 app.post("/api/rent/preview", wrap(async (req) => previewRent(req.body || {})));
 app.post("/api/forecast", wrap(async (req) => forecastStore(req.body || {})));
 app.get("/api/prd/desk", wrap(async () => buildDesk(await snapshot())));
@@ -110,7 +125,9 @@ const port = Number(process.env.PORT || 3780);
 await startAccess();
 if ((await all("stores")).length === 0) await seedIfEmpty();
 const catalog = await ensureCatalog();
+const photos = await ensurePhotos();
 console.log(`catalog ${catalog.total} added ${catalog.added}`);
+console.log(`photos ${photos.photos} added ${photos.added} linked ${photos.linked}`);
 const servers = await listenHttp(app, port);
 console.log(`store-ops http://127.0.0.1:${port}`);
 

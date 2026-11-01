@@ -30,8 +30,23 @@ p { margin: 0; }
   display: flex; justify-content: space-between; gap: 24px; align-items: flex-end;
   padding: 22px 32px 16px; border-bottom: 1px solid var(--line); background: var(--card);
 }
+.brand { display: flex; align-items: center; gap: 14px; }
+.wordmark { height: 28px; width: auto; display: block; }
 .brand small { display: block; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-size: 12px; }
 .brand h1 { font-size: 28px; }
+.nav-photo { margin: 0 0 16px; }
+.nav-photo img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #efe6dc;
+}
+.nav-photo figcaption { margin-top: 8px; }
+.nav-photo strong { display: block; font-size: 14px; }
+.nav-photo span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 .roles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .roles button, .button, .ghost {
   border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 7px 12px;
@@ -39,7 +54,15 @@ p { margin: 0; }
 .roles button.active, .button { background: var(--ink); color: #f7f1ea; border-color: var(--ink); }
 .ghost { background: transparent; color: var(--ink); }
 .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 0; }
-.nav { padding: 22px 18px; border-right: 1px solid var(--line); }
+.nav {
+  padding: 22px 18px;
+  border-right: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  overflow: auto;
+}
 .nav button { display: block; width: 100%; text-align: left; margin-bottom: 8px; }
 .main { padding: 28px 36px 64px; max-width: 1180px; }
 .lede { max-width: 68ch; color: var(--muted); margin: 8px 0 22px; }

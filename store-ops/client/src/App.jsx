@@ -22,6 +22,7 @@ export default function App() {
   const [role, setRole] = useState("expansion");
   const [page, setPage] = useState("home");
   const [storeId, setStoreId] = useState("");
+  const [photoStoreId, setPhotoStoreId] = useState("");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
@@ -79,6 +80,7 @@ export default function App() {
 
   function openStore(id) {
     setStoreId(id);
+    setPhotoStoreId(id);
     setPage("journey");
   }
 
@@ -86,8 +88,11 @@ export default function App() {
     <div className="shell">
       <header className="top">
         <div className="brand">
-          <small>Web 4.0 · 账期 {data ? `${data.period.year}年${data.period.month}月` : ""}</small>
-          <h1>零售经营系统</h1>
+          <img className="wordmark" src="/maxmara-wordmark.png" alt="Max Mara" />
+          <div>
+            <small>Web 4.0 · 账期 {data ? `${data.period.year}年${data.period.month}月` : ""}</small>
+            <h1>零售经营系统</h1>
+          </div>
         </div>
         <div className="roles">
           {ROLES.map((item) => (
@@ -99,6 +104,7 @@ export default function App() {
       </header>
       <div className="layout">
         <aside className="nav">
+          <SidePhoto data={data} storeId={photoStoreId || storeId} />
           <button className={page === "home" ? "active" : "ghost"} onClick={() => setPage("home")}>经营首页</button>
           <button className={page === "contract" ? "active" : "ghost"} onClick={() => setPage("contract")}>新签合同</button>
           <button className={page === "stores" ? "active" : "ghost"} onClick={() => setPage("stores")}>店览宽表</button>
@@ -113,9 +119,9 @@ export default function App() {
         <main className="main">
           {error ? <div className="error">{error}</div> : null}
           {!data ? <p>{error ? "接口恢复后会自动再打开 Access 数据库。" : <WaitingCopy text="正在打开 Access 数据库" active />}</p> : null}
-          {data && page === "home" ? <Home data={data} onOpen={openStore} /> : null}
+          {data && page === "home" ? <Home data={data} onOpen={openStore} onPreview={setPhotoStoreId} /> : null}
           {data && page === "stores" ? (
-            <Stores data={data} role={role} onOpen={openStore} onRun={run} api={api} busyId={busyId} />
+            <Stores data={data} role={role} onOpen={openStore} onPreview={setPhotoStoreId} onRun={run} api={api} busyId={busyId} />
           ) : null}
           {data && page === "contract" ? <ContractDesk api={api} onRun={run} onOpen={openStore} busyId={busyId} /> : null}
           {data && page === "journey" ? (
@@ -137,7 +143,25 @@ function matchesStore(store, query) {
   return blob.toLowerCase().includes(query.trim().toLowerCase());
 }
 
-function Home({ data, onOpen }) {
+function SidePhoto({ data, storeId }) {
+  if (!data?.stores?.length) return null;
+  const store = data.stores.find((item) => item.id === storeId)
+    || data.stores.find((item) => item.id === "st-sanlitun")
+    || data.stores[0];
+  if (!store?.photo_id) return null;
+  return (
+    <figure className="nav-photo">
+      <img src={`/api/photos/${store.photo_id}`} alt={`${store.name}实景`} />
+      <figcaption>
+        <strong>{store.name}</strong>
+        <span>{[store.city, store.mall_name].filter(Boolean).join(" · ")}</span>
+        <span>实景样本</span>
+      </figcaption>
+    </figure>
+  );
+}
+
+function Home({ data, onOpen, onPreview }) {
   const [query, setQuery] = useState("");
   const shown = data.stores.filter((store) => matchesStore(store, query));
   const payable = data.bills.reduce((sum, bill) => sum + Number(bill.payable || 0), 0);
@@ -164,7 +188,7 @@ function Home({ data, onOpen }) {
           const step = data.journey.find((item) => item.store_id === store.id)?.step || 0;
           const title = data.steps.find((item) => item.step === step)?.title || "尚未开始";
           return (
-            <article className="card" key={store.id}>
+            <article className="card" key={store.id} onMouseEnter={() => onPreview(store.id)}>
               <span className="tag">{store.region} · {store.city}</span>
               <h3>{store.name}</h3>
               <p className="meta">{store.store_type || "精品店"} · {store.mall_name} · {store.keep_decision || "待评估"}</p>
@@ -179,7 +203,7 @@ function Home({ data, onOpen }) {
   );
 }
 
-function Stores({ data, role, onOpen, onRun, api, busyId }) {
+function Stores({ data, role, onOpen, onPreview, onRun, api, busyId }) {
   const [query, setQuery] = useState("");
   const shown = data.stores.filter((store) => matchesStore(store, query));
   return (
@@ -207,7 +231,7 @@ function Stores({ data, role, onOpen, onRun, api, busyId }) {
               const sales = data.sales.find((item) => item.store_id === store.id);
               const step = data.journey.find((item) => item.store_id === store.id)?.step || 0;
               return (
-                <tr key={store.id}>
+                <tr key={store.id} onMouseEnter={() => onPreview(store.id)}>
                   <td>{store.brand}</td>
                   <td>
                     <button className="linkish" onClick={() => onOpen(store.id)}>{store.name}</button>

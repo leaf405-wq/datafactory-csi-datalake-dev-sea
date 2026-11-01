@@ -45,7 +45,9 @@ public final class AccessServer {
                 text("floor"), text("status"), text("keep_decision"), text("lease_end"), text("lifecycle_start"),
                 text("landlord"), text("rank"), text("action_plan"),
                 text("province"), memo("address"), text("phone"), text("hours"),
-                text("store_type"), text("listed_from"), memo("data_note"));
+                text("store_type"), text("listed_from"), memo("data_note"), text("photo_id"));
+        table("store_photos",
+                text("id"), text("label"), text("mime"), memo("content"));
         table("contracts",
                 text("id"), text("store_id"), text("contract_no"), text("status"), memo("raw_text"), text("model"),
                 dbl("fixed_rent"), dbl("rate"), dbl("min_sales"), dbl("min_rent"), dbl("overage_rate"), dbl("cap_amount"),
