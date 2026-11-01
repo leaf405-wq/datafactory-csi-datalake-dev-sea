@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { incompleteStoreIds, monthsToFill, planCloseMonths } from "./closeMonths.js";
+import { incompleteStoreIds, monthsToFill, openingLanePlan, planCloseMonths } from "./closeMonths.js";
 
 const STORES = ["st-a", "st-b", "st-c", "st-d", "st-e"];
 const CONTRACTS = STORES.map((id, index) => ({
@@ -56,4 +56,10 @@ test("4 月到 10 月围绕正常结果，只有 3 家店的上月泳道未完�
   const may = plan.rows.find((row) => row.storeId === "st-b" && row.month === 5);
   assert.notEqual(april.sales, may.sales);
   assert.equal(plan.rows.find((row) => row.storeId === unfinished[0] && row.month === 9).step, 13);
+});
+
+test("当月每家店从泳道第 1 步开始，不写销售", () => {
+  const rows = openingLanePlan(STORES, { year: 2026, month: 11 });
+  assert.equal(rows.length, STORES.length);
+  assert.equal(rows.every((row) => row.step === 0 && row.month === 11 && row.sales == null), true);
 });

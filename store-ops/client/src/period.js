@@ -25,16 +25,18 @@ export function sameMonth(left, right) {
   return Number(left?.year) === Number(right?.year) && Number(left?.month) === Number(right?.month);
 }
 
-export function historyMonths(rows, accounting) {
+export function historyMonths(rows, accounting, calendar) {
+  const limit = calendar ? monthIndex(calendar) : monthIndex(accounting);
   const seen = new Map();
   for (const row of rows) {
     const year = Number(row?.year);
     const month = Number(row?.month);
     if (!year || month < 1 || month > 12) continue;
-    if (monthIndex({ year, month }) > monthIndex(accounting)) continue;
+    if (monthIndex({ year, month }) > limit) continue;
     seen.set(`${year}-${month}`, { year, month });
   }
   seen.set(`${accounting.year}-${accounting.month}`, { year: accounting.year, month: accounting.month });
+  if (calendar) seen.set(`${calendar.year}-${calendar.month}`, { year: calendar.year, month: calendar.month });
   return [...seen.values()].sort((left, right) => monthIndex(left) - monthIndex(right));
 }
 

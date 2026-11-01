@@ -290,17 +290,90 @@ export function ForecastPage({ api, onRun, busyId }) {
   );
 }
 
-export function MonitorPage({ api, period }) {
+function matchesDesk(row, query) {
+  if (!query.trim()) return true;
+  const blob = [row.region, row.city, row.name, row.mall, row.phone].filter(Boolean).join(" ");
+  return blob.toLowerCase().includes(query.trim().toLowerCase());
+}
+
+function round2(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+function rollupDesk(rows, key) {
+  const groups = new Map();
+  for (const row of rows) {
+    if (row.missing) continue;
+    const name = row[key] || "未填";
+    const current = groups.get(name) || { name, sales: 0, netRent: 0, payable: 0 };
+    current.sales += Number(row.sales) || 0;
+    current.netRent += Number(row.netRent) || 0;
+    current.payable += Number(row.payable) || 0;
+    groups.set(name, current);
+  }
+  return [...groups.values()].map((group) => ({
+    ...group,
+    ratio: group.sales > 0 ? group.netRent / group.sales : null,
+  }));
+}
+
+function summarizeGeo(rows) {
+  const groups = new Map();
+  for (const row of rows) {
+    if (row.missing || row.sales == null) continue;
+    const region = row.region || "未填区域";
+    const city = row.city || "未填城市";
+    const key = `${region} / ${city}`;
+    const current = groups.get(key) || { label: key, region, city, stores: 0, sales: 0, profit: 0, weighted: 0 };
+    const sales = Number(row.sales) || 0;
+    const profit = Number(row.profit) || 0;
+    current.stores += 1;
+    current.sales += sales;
+    current.profit += profit;
+    current.weighted += profit * sales;
+    groups.set(key, current);
+  }
+  const geo = [...groups.values()].map((group) => ({
+    label: group.label,
+    region: group.region,
+    city: group.city,
+    stores: group.stores,
+    sales: round2(group.sales),
+    weightedAverageProfit: group.sales > 0 ? round2(group.weighted / group.sales) : null,
+    weightedNetProfit: round2(group.profit),
+  })).sort((left, right) => left.label.localeCompare(right.label, "zh"));
+  const sales = [...groups.values()].reduce((sum, group) => sum + group.sales, 0);
+  const weighted = [...groups.values()].reduce((sum, group) => sum + group.weighted, 0);
+  const profit = [...groups.values()].reduce((sum, group) => sum + group.profit, 0);
+  return {
+    geo,
+    summary: {
+      regions: new Set(geo.map((group) => group.region)).size,
+      cities: new Set(geo.map((group) => group.city)).size,
+      weightedAverageProfit: sales > 0 ? round2(weighted / sales) : null,
+      weightedNetProfit: round2(profit),
+    },
+  };
+}
+
+export function MonitorPage({ api, period, months, accounting, calendar, onPeriod, MonthHistory }) {
   const { desk, error } = useDesk(api, period);
+  const [query, setQuery] = useState("");
+  const shown = (desk?.monitor || []).filter((row) => matchesDesk(row, query));
   return (
     <section id="page-monitor">
       <h2>5.6 营业中店铺每日监控与预警</h2>
       <p className="lede">
-        观察日定在 2026-03-20，时间进度按 20/31。销售用的是 3 月整月数，不是当日流水。DW 日数据还没有接进来。
+        观察日定在 2026-03-20，时间进度按 20/31。销售用的是所选月份的月结数，不是当日流水。DW 日数据还没有接进来。页面默认停在上月，当月从泳道第 1 步开始。
       </p>
       {error ? <div className="error">{error}</div> : null}
       {!desk ? <p><WaitingCopy text="正在读取店铺" active /></p> : (
         <>
+          <div className="row">
+            <input id="monitor-filter" value={query} placeholder="按区域、城市、店名、商场、电话筛选" onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
+            <span className="meta">显示 {shown.length} / {desk.monitor.length} 家</span>
+            {MonthHistory ? <MonthHistory months={months} selected={period} accounting={accounting} calendar={calendar} onPeriod={onPeriod} /> : null}
+          </div>
           <p className="meta">{desk.marginNote}</p>
           <p className="meta">{desk.brdNote}</p>
           <p className="meta">{desk.historyNote}</p>
@@ -334,7 +407,7 @@ export function MonitorPage({ api, period }) {
                 </tr>
               </thead>
               <tbody>
-                {desk.monitor.map((row) => (
+                {shown.map((row) => (
                   <tr key={row.storeId}>
                     <td>{row.name}</td>
                     <td>{row.mall}</td>
@@ -362,28 +435,34 @@ export function MonitorPage({ api, period }) {
   );
 }
 
-export function CockpitPage({ api, period, months, accounting, onPeriod, MonthHistory }) {
+export function CockpitPage({ api, period, months, accounting, calendar, onPeriod, MonthHistory }) {
   const { desk, error } = useDesk(api, period);
+  const [query, setQuery] = useState("");
+  const shown = (desk?.monitor || []).filter((row) => matchesDesk(row, query));
+  const shownIds = new Set(shown.map((row) => row.storeId));
+  const geoView = summarizeGeo(shown);
+  const mallBars = rollupDesk(shown, "mall");
+  const regionBars = rollupDesk(shown, "region");
   return (
     <section id="page-cockpit">
       <h2>5.8 多维报表与管理驾驶舱</h2>
-      <p className="lede">给区域经理、财务、营运总监、拓展和高管看同一套账期的数。区域和城市合在一列，利润按销售额加权。</p>
+      <p className="lede">给区域经理、财务、营运总监、拓展和高管看同一套账期的数。区域和城市合在一列，利润按销售额加权。页面默认停在上月。</p>
       {error ? <div className="error">{error}</div> : null}
       {!desk ? <p><WaitingCopy text="正在汇总报表" active /></p> : (
         <>
           <h3>区域 / 城市</h3>
           <p className="meta">适用角色：区域经理 / 财务 / 高管。平均加权利润 = Σ(店铺净利润 × 店铺销售额) / Σ销售额。加权净利润 = Σ店铺净利润。毛利仍按销售额的 55% 估算。</p>
-          {MonthHistory ? (
-            <div className="row">
-              <MonthHistory months={months} selected={period} accounting={accounting} onPeriod={onPeriod} />
-            </div>
-          ) : null}
-          <div className="kpis">
-            <div className="kpi"><strong>{desk.geoSummary.regions} / {desk.geoSummary.cities}</strong><span>区域 / 城市</span></div>
-            <div className="kpi"><strong>{desk.geo.length ? (desk.geoSummary.weightedAverageProfit == null ? "—" : money(desk.geoSummary.weightedAverageProfit)) : "—"}</strong><span>平均加权利润</span></div>
-            <div className="kpi"><strong>{desk.geo.length ? money(desk.geoSummary.weightedNetProfit) : "—"}</strong><span>加权净利润</span></div>
+          <div className="row">
+            <input id="cockpit-filter" value={query} placeholder="按区域、城市、店名、商场、电话筛选" onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
+            <span className="meta">显示 {shown.length} / {desk.monitor.length} 家</span>
+            {MonthHistory ? <MonthHistory months={months} selected={period} accounting={accounting} calendar={calendar} onPeriod={onPeriod} /> : null}
           </div>
-          {desk.geo.length === 0 ? <p className="meta">这个月还没有销售。日历上的当月还没开始，结账看上月。</p> : null}
+          <div className="kpis">
+            <div className="kpi"><strong>{geoView.summary.regions} / {geoView.summary.cities}</strong><span>区域 / 城市</span></div>
+            <div className="kpi"><strong>{geoView.geo.length ? (geoView.summary.weightedAverageProfit == null ? "—" : money(geoView.summary.weightedAverageProfit)) : "—"}</strong><span>平均加权利润</span></div>
+            <div className="kpi"><strong>{geoView.geo.length ? money(geoView.summary.weightedNetProfit) : "—"}</strong><span>加权净利润</span></div>
+          </div>
+          {geoView.geo.length === 0 ? <p className="meta">这个月还没有销售。当月泳道停在第 1 步，结账数字看上月。</p> : null}
           <div className="panel" style={{ overflowX: "auto" }}>
             <table>
               <thead>
@@ -392,7 +471,7 @@ export function CockpitPage({ api, period, months, accounting, onPeriod, MonthHi
                 </tr>
               </thead>
               <tbody>
-                {desk.geo.map((row) => (
+                {geoView.geo.map((row) => (
                   <tr key={row.label}>
                     <td>{row.label}</td>
                     <td className="num">{row.stores}</td>
@@ -415,7 +494,7 @@ export function CockpitPage({ api, period, months, accounting, onPeriod, MonthHi
                 </tr>
               </thead>
               <tbody>
-                {desk.monitor.filter((row) => !row.missing).map((row) => (
+                {shown.filter((row) => !row.missing).map((row) => (
                   <tr key={row.storeId}>
                     <td>{row.name}</td>
                     <td className="num">{money(row.sales)}</td>
@@ -439,7 +518,7 @@ export function CockpitPage({ api, period, months, accounting, onPeriod, MonthHi
                 </tr>
               </thead>
               <tbody>
-                {desk.ranking.map((row) => (
+                {desk.ranking.filter((row) => shownIds.has(row.storeId)).map((row) => (
                   <tr key={row.storeId}>
                     <td>{row.board ? <Level level={row.board === "红榜" ? "red" : "yellow"}>{row.board}</Level> : "—"}</td>
                     <td>{row.name}</td>
@@ -457,15 +536,15 @@ export function CockpitPage({ api, period, months, accounting, onPeriod, MonthHi
           <h3>租金成本占比</h3>
           <p className="meta">适用角色：财务 / 拓展。{desk.historyNote} 占比 = 不含税租金 / 销售额。</p>
           <div className="bars">
-            {desk.rentBars.malls.map((row) => (
-              <div key={row.name}>
+            {mallBars.map((row) => (
+              <div key={`mall-${row.name}`}>
                 <span>{row.name}</span>
                 <div className="bar-track"><div className="bar" style={{ width: `${Math.min(100, (row.ratio || 0) * 100)}%` }} /></div>
                 <strong>{percent(row.ratio)}</strong>
               </div>
             ))}
-            {desk.rentBars.regions.map((row) => (
-              <div key={row.name}>
+            {regionBars.map((row) => (
+              <div key={`region-${row.name}`}>
                 <span>{row.name}</span>
                 <div className="bar-track"><div className="bar" style={{ width: `${Math.min(100, (row.ratio || 0) * 100)}%` }} /></div>
                 <strong>{percent(row.ratio)}</strong>
@@ -483,7 +562,7 @@ export function CockpitPage({ api, period, months, accounting, onPeriod, MonthHi
                 </tr>
               </thead>
               <tbody>
-                {desk.lease.map((row) => (
+                {desk.lease.filter((row) => shownIds.has(row.storeId)).map((row) => (
                   <tr key={row.storeId}>
                     <td>{row.name}</td>
                     <td>{row.leaseEnd || "—"}</td>
@@ -507,7 +586,7 @@ export function CockpitPage({ api, period, months, accounting, onPeriod, MonthHi
                 </tr>
               </thead>
               <tbody>
-                {desk.malls.map((row) => (
+                {mallBars.map((row) => (
                   <tr key={row.name}>
                     <td>{row.name}</td>
                     <td className="num">{money(row.sales)}</td>

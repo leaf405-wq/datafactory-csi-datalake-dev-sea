@@ -414,6 +414,7 @@ export function buildDesk(snapshot) {
       mall: store.mall_name,
       region: store.region,
       city: store.city,
+      phone: store.phone || "",
       sellingArea: num(store.selling_area),
       leaseEnd: store.lease_end,
       source: money.source || "",

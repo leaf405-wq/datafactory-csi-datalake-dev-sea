@@ -87,13 +87,12 @@ export default function App() {
     }
   }
 
+  const calendar = calendarMonth();
   const accounting = data?.period || null;
   const viewed = period || accounting;
   const months = data ? historyMonths([
     ...data.journey, ...data.sales, ...data.bills, ...data.reconciliations, ...data.payments,
-  ], accounting) : [];
-
-  const calendar = calendarMonth();
+  ], accounting, calendar) : [];
 
   function openStore(id, nextPeriod) {
     if (nextPeriod) setPeriod(nextPeriod);
@@ -108,7 +107,7 @@ export default function App() {
         <div className="brand">
           <img className="wordmark" src="/maxmara-wordmark.png" alt="Max Mara" />
           <div>
-            <small>Web 4.0 · 账期 {viewed ? `${viewed.year}年${viewed.month}月${sameMonth(viewed, accounting) ? " · 上月" : ""}` : ""}</small>
+            <small>Web 4.0 · 账期 {viewed ? `${viewed.year}年${viewed.month}月${sameMonth(viewed, accounting) ? " · 上月" : sameMonth(viewed, calendar) ? " · 当月" : ""}` : ""}</small>
             <h1>零售经营系统</h1>
           </div>
         </div>
@@ -149,9 +148,11 @@ export default function App() {
           ) : null}
           {data && page === "rent" ? <RentPage api={api} onRun={run} busyId={busyId} /> : null}
           {data && page === "forecast" ? <ForecastPage api={api} onRun={run} busyId={busyId} /> : null}
-          {data && page === "monitor" ? <MonitorPage api={api} period={viewed} /> : null}
+          {data && page === "monitor" ? (
+            <MonitorPage api={api} period={viewed} months={months} accounting={accounting} calendar={calendar} onPeriod={setPeriod} MonthHistory={MonthHistory} />
+          ) : null}
           {data && page === "cockpit" ? (
-            <CockpitPage api={api} period={viewed} months={months} accounting={accounting} onPeriod={setPeriod} MonthHistory={MonthHistory} />
+            <CockpitPage api={api} period={viewed} months={months} accounting={accounting} calendar={calendar} onPeriod={setPeriod} MonthHistory={MonthHistory} />
           ) : null}
         </main>
       </div>
@@ -191,7 +192,13 @@ function laneStep(data, storeId, period) {
   return data.journey.find((item) => item.store_id === storeId && inMonth(item, period))?.step || 0;
 }
 
-function MonthHistory({ months, selected, accounting, onPeriod }) {
+function monthChipLabel(item, accounting, calendar) {
+  if (calendar && sameMonth(item, calendar) && !sameMonth(item, accounting)) return "当月";
+  if (sameMonth(item, accounting)) return "上月";
+  return `${item.year}年${item.month}月`;
+}
+
+function MonthHistory({ months, selected, accounting, calendar, onPeriod }) {
   const windowed = historyWindow(months, selected, 6);
   return (
     <div className="month-history" aria-label="经营历史记录（按月）">
@@ -206,7 +213,7 @@ function MonthHistory({ months, selected, accounting, onPeriod }) {
           className={sameMonth(item, selected) ? "active" : "ghost"}
           onClick={() => onPeriod(item)}
         >
-          {sameMonth(item, accounting) ? "上月" : `${item.year}年${item.month}月`}
+          {monthChipLabel(item, accounting, calendar)}
         </button>
       ))}
       {windowed.hasNext ? (
@@ -222,11 +229,42 @@ function laneUnfinished(data, storeId, period) {
   ));
 }
 
-function LaneStatus({ step, unfinished, idleLabel }) {
-  if (Number(step) >= 13) return <p className="lane-done">该泳道13步全部完成</p>;
+function StepRail({ step }) {
+  const completed = Number(step) || 0;
+  const current = completed >= 13 ? 13 : completed + 1;
+  return (
+    <div className="lane-steps" aria-label={`第 ${current} / 13 步`}>
+      {STEP_COLORS.map((color, index) => {
+        const number = index + 1;
+        const reached = number <= completed;
+        const now = number === current && completed < 13;
+        return (
+          <span
+            key={number}
+            style={reached
+              ? { background: color, borderColor: color, color: "#fff" }
+              : { borderColor: color, color, fontWeight: now ? 700 : 400 }}
+            title={`第 ${number} 步`}
+          >
+            {number}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function LaneStatus({ step, unfinished }) {
+  const completed = Number(step) || 0;
+  if (completed >= 13) return <p className="lane-done">该泳道13步全部完成</p>;
   if (unfinished) return <p className="lane-alert">未完成 · 红色预警</p>;
-  if (!Number(step)) return <p className="meta">{idleLabel || "本月尚未开始"}</p>;
-  return <p className="meta">进行到第 {step} 步</p>;
+  const current = completed + 1;
+  return (
+    <>
+      <StepRail step={completed} />
+      <p className="meta">第 {current} / 13 步</p>
+    </>
+  );
 }
 
 function LaneLinks({ storeId, accounting, calendar, onOpen, lastDone }) {
@@ -278,7 +316,7 @@ function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, on
     <>
       <h2>从签约到收账，按泳道往下走</h2>
       <p className="lede">
-        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。财务按上月结账，日历上的当月还没开始。4 月到上月按 3 月的正常水平做了样本，泳道记为完成。没有走完的店放在红色预警队列里。
+        拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。页面默认停在上月。当月每家店从泳道第 1 步开始，13 步都列在店里。4 月到上月按 3 月的正常水平做了样本，走完的只标绿色完成。没有走完的店放在红色预警队列里。
       </p>
       <div className="kpis">
         <div className="kpi"><strong>{data.stores.length}</strong><span>在册店铺</span></div>
@@ -289,20 +327,19 @@ function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, on
       <div className="row">
         <input id="home-filter" value={query} placeholder={FILTER_PLACEHOLDER} onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
         <span className="meta">显示 {shown.length} / {data.stores.length} 家</span>
-        <MonthHistory months={months} selected={period} accounting={accounting} onPeriod={onPeriod} />
+        <MonthHistory months={months} selected={period} accounting={accounting} calendar={calendar} onPeriod={onPeriod} />
       </div>
       <RedQueue data={data} period={period} stores={shown} onOpen={onOpen} />
       <div className="grid">
         {shown.map((store) => {
           const step = laneStep(data, store.id, period);
-          const idleLabel = sameMonth(period, calendar) ? "当月还没开始" : "本月尚未开始";
           return (
             <article className="card" key={store.id} onMouseEnter={() => onPreview(store.id)}>
               <span className="tag">{store.region} · {store.city}</span>
               <h3>{store.name}</h3>
               <p className="meta">{store.store_type || "精品店"} · {store.mall_name} · {store.keep_decision || "待评估"}</p>
               {store.address ? <p className="meta">{store.address}</p> : null}
-              <LaneStatus step={step} unfinished={laneUnfinished(data, store.id, period)} idleLabel={idleLabel} />
+              <LaneStatus step={step} unfinished={laneUnfinished(data, store.id, period)} />
               <LaneLinks
                 storeId={store.id}
                 accounting={accounting}
@@ -318,7 +355,7 @@ function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, on
   );
 }
 
-function Stores({ data, period, months, accounting, onPeriod, role, onOpen, onPreview, onRun, api, busyId }) {
+function Stores({ data, period, months, accounting, calendar, onPeriod, role, onOpen, onPreview, onRun, api, busyId }) {
   const [query, setQuery] = useState("");
   const shown = data.stores.filter((store) => matchesStore(store, query));
   return (
@@ -330,7 +367,7 @@ function Stores({ data, period, months, accounting, onPeriod, role, onOpen, onPr
       <div className="row">
         <input id="store-filter" value={query} placeholder={FILTER_PLACEHOLDER} onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
         <span className="meta">显示 {shown.length} / {data.stores.length} 家</span>
-        <MonthHistory months={months} selected={period} accounting={accounting} onPeriod={onPeriod} />
+        <MonthHistory months={months} selected={period} accounting={accounting} calendar={calendar} onPeriod={onPeriod} />
       </div>
       <div className="panel" style={{ overflowX: "auto" }}>
         <table>
@@ -520,7 +557,7 @@ function Journey({ data, storeId, period, accounting, calendar, onOpen, role, ap
 
   return (
     <div className="work">
-      {Number(step) > 0 && Number(step) < 13 ? (
+      {Number(step) < 13 ? (
       <ol className="steps">
         {data.steps.map((item) => {
           const color = STEP_COLORS[item.step - 1];
@@ -549,8 +586,8 @@ function Journey({ data, storeId, period, accounting, calendar, onOpen, role, ap
         <p className="meta">{[store.store_type, store.province, store.city, store.phone, store.hours].filter(Boolean).join(" · ")}</p>
         {store.address ? <p className="meta">{store.address}</p> : null}
         {store.data_note ? <p className="meta">{store.data_note}</p> : null}
-        <p className="meta">{currentLane ? "下一步只能由泳道上的部门提交。" : futureLane ? "当月还没开始。" : "这是历史月份，只可查看。"}</p>
-        <LaneStatus step={step} unfinished={laneUnfinished(data, storeId, period)} idleLabel={futureLane ? "当月还没开始" : "本月尚未开始"} />
+        <p className="meta">{currentLane ? "下一步只能由泳道上的部门提交。" : futureLane ? "当月从第 1 步开始，共 13 步。结账仍看上月。" : "这是历史月份，只可查看。"}</p>
+        <LaneStatus step={step} unfinished={laneUnfinished(data, storeId, period)} />
         <LaneLinks storeId={store.id} accounting={accounting} calendar={calendar} onOpen={onOpen} lastDone={laneStep(data, storeId, accounting) >= 13} />
 
         {currentLane && next === 5 ? (

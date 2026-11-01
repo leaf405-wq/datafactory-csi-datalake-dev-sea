@@ -1,5 +1,5 @@
-import { all, insert } from "./access.js";
-import { accountingPeriod, monthIndex } from "../client/src/period.js";
+import { all, insert, update } from "./access.js";
+import { accountingPeriod, calendarMonth, monthIndex } from "../client/src/period.js";
 import { calculateMonthlyRent, inRentFreePeriod } from "./rentEngine.js";
 
 const FROM = { year: 2026, month: 4 };
@@ -268,4 +268,45 @@ export async function ensureCloseMonths(accounting = accountingPeriod()) {
     added += 1;
   }
   return { months: plan.months, added, incomplete: plan.incomplete };
+}
+
+/** The calendar month opens at swimlane step 1. It has no sales yet. */
+export function openingLanePlan(storeIds, calendar) {
+  return storeIds.map((storeId) => ({
+    id: `${storeId}-${calendar.year}-${calendar.month}`,
+    storeId,
+    year: calendar.year,
+    month: calendar.month,
+    step: 0,
+  }));
+}
+
+export async function ensureOpeningLane(calendar = calendarMonth()) {
+  const [stores, journeys, sales] = await Promise.all([all("stores"), all("journey"), all("sales_monthly")]);
+  const seen = new Map(journeys.map((row) => [row.id, row]));
+  const withSales = new Set(sales
+    .filter((row) => Number(row.year) === Number(calendar.year) && Number(row.month) === Number(calendar.month))
+    .map((row) => row.store_id));
+  const plan = openingLanePlan(stores.map((store) => store.id), calendar);
+  let added = 0;
+  for (const row of plan) {
+    const existing = seen.get(row.id);
+    if (existing) {
+      if (Number(existing.step) === 1 && !withSales.has(row.storeId)) {
+        await update("journey", row.id, { step: 0, updated_at: NOW });
+        added += 1;
+      }
+      continue;
+    }
+    await insert("journey", {
+      id: row.id,
+      store_id: row.storeId,
+      year: row.year,
+      month: row.month,
+      step: row.step,
+      updated_at: NOW,
+    });
+    added += 1;
+  }
+  return { year: calendar.year, month: calendar.month, added };
 }

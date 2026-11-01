@@ -38,3 +38,18 @@ test("历史只保留有记录的月份和当月，窗口最多前后各六个�
   assert.equal(atEnd.hasNext, false);
   assert.deepEqual(atEnd.prevMonth, { year: 2026, month: 3 });
 });
+
+test("日历当月留在历史条最后，晚于当月的记录不出现", () => {
+  const months = historyMonths([
+    { year: 2026, month: 3 },
+    { year: 2026, month: 12 },
+  ], { year: 2026, month: 10 }, { year: 2026, month: 11 });
+  assert.deepEqual(months, [
+    { year: 2026, month: 3 },
+    { year: 2026, month: 10 },
+    { year: 2026, month: 11 },
+  ]);
+  const windowed = historyWindow(months, { year: 2026, month: 10 }, 6);
+  assert.equal(windowed.visible.at(-1).month, 11);
+  assert.equal(windowed.visible.some((item) => item.month === 10), true);
+});
