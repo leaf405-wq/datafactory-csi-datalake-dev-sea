@@ -40,9 +40,9 @@ module.exports = Behavior({
         chips: ctx.chips,
         role: app.globalData.role,
         roles: view.ROLES.map((item) => ({ ...item, on: item.id === app.globalData.role })),
-        photoUrl: store?.photo_id ? `${base}/api/photos/${store.photo_id}` : "",
-        photoName: store?.name || "",
-        photoMeta: [store?.city, store?.mall_name].filter(Boolean).join(" · "),
+        photoUrl: store && store.photo_id ? `${base}/api/photos/${store.photo_id}` : "",
+        photoName: (store && store.name) || "",
+        photoMeta: [store && store.city, store && store.mall_name].filter(Boolean).join(" · "),
       });
       return ctx;
     },
@@ -111,7 +111,7 @@ module.exports = Behavior({
     openLane(event) {
       const id = event.currentTarget.dataset.id;
       const app = getApp();
-      const period = app.globalData.period || app.globalData.snapshot?.period;
+      const period = app.globalData.period || (app.globalData.snapshot && app.globalData.snapshot.period);
       if (!id || !period) return;
       this.rememberStore(id);
       wx.navigateTo({ url: `/pages/journey/journey?id=${id}&year=${period.year}&month=${period.month}` });

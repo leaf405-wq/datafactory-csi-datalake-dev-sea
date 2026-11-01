@@ -65,6 +65,11 @@ const MALL_FIELDS = [
   ["total", "商场合计"],
 ];
 
+function field(object, key) {
+  if (object == null) return undefined;
+  return object[key];
+}
+
 function calendarMonth(now = new Date()) {
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -87,11 +92,11 @@ function monthIndex(period) {
 }
 
 function sameMonth(left, right) {
-  return Number(left?.year) === Number(right?.year) && Number(left?.month) === Number(right?.month);
+  return Number(field(left, "year")) === Number(field(right, "year")) && Number(field(left, "month")) === Number(field(right, "month"));
 }
 
 function openMonthOf(record) {
-  const raw = record?.lifecycle_start || record?.lifecycleStart || "";
+  const raw = field(record, "lifecycle_start") || field(record, "lifecycleStart") || "";
   const match = String(raw).match(/(\d{4})-(\d{2})/);
   if (!match) return null;
   return { year: Number(match[1]), month: Number(match[2]) };
@@ -107,8 +112,8 @@ function historyMonths(rows, accounting, calendar) {
   const limit = calendar ? monthIndex(calendar) : monthIndex(accounting);
   const seen = new Map();
   for (const row of rows || []) {
-    const year = Number(row?.year);
-    const month = Number(row?.month);
+    const year = Number(field(row, "year"));
+    const month = Number(field(row, "month"));
     if (!year || month < 1 || month > 12) continue;
     if (monthIndex({ year, month }) > limit) continue;
     seen.set(`${year}-${month}`, { year, month });
@@ -167,7 +172,8 @@ function matchesDesk(row, query) {
 }
 
 function laneStep(data, storeId, period) {
-  return data.journey.find((item) => item.store_id === storeId && inMonth(item, period))?.step || 0;
+  const row = data.journey.find((item) => item.store_id === storeId && inMonth(item, period));
+  return (row && row.step) || 0;
 }
 
 function laneUnfinished(data, storeId, period) {
@@ -240,7 +246,7 @@ function homeModel(data, period, query) {
     .map((alert) => ({
       id: alert.id,
       storeId: alert.store_id,
-      name: data.stores.find((store) => store.id === alert.store_id)?.name || alert.store_id,
+      name: (data.stores.find((store) => store.id === alert.store_id) || {}).name || alert.store_id,
       message: alert.message,
     }));
   const cards = shown.map((store) => {
@@ -294,7 +300,7 @@ function storesModel(data, period, query, role) {
       decisionIndex: Math.max(0, DECISIONS.indexOf(decision)),
       salesText: sales ? money(sales.sales) : "—",
       payableText: bill ? money(bill.payable) : "—",
-      ratioText: bill?.rent_to_sales ? `${(Number(bill.rent_to_sales) * 100).toFixed(1)}%` : "—",
+      ratioText: bill && bill.rent_to_sales ? `${(Number(bill.rent_to_sales) * 100).toFixed(1)}%` : "—",
       stepText: step >= 13 ? "已完成13步泳道" : (step ? lane.stepText : "—"),
       stepDone: step >= 13,
       stepAlert: Boolean(lane.alert),
@@ -319,8 +325,8 @@ function journeyModel(data, storeId, period, calendar) {
   const alerts = data.alerts.filter((item) => item.store_id === storeId && inMonth(item, period));
   const recon = data.reconciliations.find((item) => item.store_id === storeId && inMonth(item, period));
   const payment = data.payments.find((item) => item.store_id === storeId && inMonth(item, period));
-  const trace = Array.isArray(bill?.trace) ? bill.trace : [];
-  const lines = Array.isArray(recon?.lines) ? recon.lines : [];
+  const trace = Array.isArray(bill && bill.trace) ? bill.trace : [];
+  const lines = Array.isArray(recon && recon.lines) ? recon.lines : [];
   let hint = "还没到这个月。";
   if (step >= 13) hint = `${period.year}年${period.month}月这条泳道已经走完。`;
   else if (editable) hint = `当前是${period.year}年${period.month}月。下一步只能由泳道上的部门提交。`;
@@ -354,7 +360,7 @@ function journeyModel(data, storeId, period, calendar) {
     showCalc: editable && (next === 6 || next === 7),
     showTrace: Boolean(bill) && step >= 7,
     payableText: bill ? money(bill.payable) : "",
-    ratioText: bill?.rent_to_sales ? `${(Number(bill.rent_to_sales) * 100).toFixed(1)}%` : "—",
+    ratioText: bill && bill.rent_to_sales ? `${(Number(bill.rent_to_sales) * 100).toFixed(1)}%` : "—",
     trace: trace.map((item, index) => ({ id: `${index}-${item.node}`, node: item.node, decision: item.decision || "", detail: item.detail || "" })),
     billAlerts: alerts.map((alert) => ({ id: alert.id, level: alert.level, message: alert.message })),
     showMallIn: editable && next === 8,
@@ -444,9 +450,9 @@ function summarizeGeo(rows) {
 }
 
 function monitorModel(desk, period, query) {
-  const shown = (desk?.monitor || []).filter((row) => operatingIn(row, period) && matchesDesk(row, query));
+  const shown = (field(desk, "monitor") || []).filter((row) => operatingIn(row, period) && matchesDesk(row, query));
   return {
-    countText: `显示 ${shown.length} / ${(desk?.monitor || []).length} 家`,
+    countText: `显示 ${shown.length} / ${(field(desk, "monitor") || []).length} 家`,
     rows: shown.map((row) => ({
       storeId: row.storeId,
       name: row.name,
@@ -466,17 +472,17 @@ function monitorModel(desk, period, query) {
       quiet: !(row.alerts || []).length,
       notes: row.notes || [],
     })),
-    marginNote: desk?.marginNote || "",
-    brdNote: desk?.brdNote || "",
-    historyNote: desk?.historyNote || "",
+    marginNote: field(desk, "marginNote") || "",
+    brdNote: field(desk, "brdNote") || "",
+    historyNote: field(desk, "historyNote") || "",
   };
 }
 
 function cockpitModel(desk, period, query) {
-  const shown = (desk?.monitor || []).filter((row) => operatingIn(row, period) && matchesDesk(row, query));
+  const shown = (field(desk, "monitor") || []).filter((row) => operatingIn(row, period) && matchesDesk(row, query));
   const shownIds = new Set(shown.map((row) => row.storeId));
   const geoView = summarizeGeo(shown);
-  const ranking = (desk?.ranking || []).filter((row) => shownIds.has(row.storeId)).map((row) => ({
+  const ranking = (field(desk, "ranking") || []).filter((row) => shownIds.has(row.storeId)).map((row) => ({
     storeId: row.storeId,
     board: row.board || "",
     boardClass: row.board === "红榜" ? "red" : row.board === "黑榜" ? "yellow" : "",
@@ -495,7 +501,7 @@ function cockpitModel(desk, period, query) {
     profitText: money(row.profit),
     marginText: percent(row.margin),
   }));
-  const lease = (desk?.lease || []).filter((row) => shownIds.has(row.storeId)).map((row) => ({
+  const lease = (field(desk, "lease") || []).filter((row) => shownIds.has(row.storeId)).map((row) => ({
     storeId: row.storeId,
     name: row.name,
     leaseEnd: row.leaseEnd || "—",
@@ -505,7 +511,7 @@ function cockpitModel(desk, period, query) {
     advice: row.advice || "",
   }));
   return {
-    countText: `显示 ${shown.length} / ${(desk?.monitor || []).length} 家`,
+    countText: `显示 ${shown.length} / ${(field(desk, "monitor") || []).length} 家`,
     regions: geoView.summary.regions,
     cities: geoView.summary.cities,
     avgText: geoView.geo.length ? geoView.summary.avgText : "—",
@@ -517,8 +523,8 @@ function cockpitModel(desk, period, query) {
     mallBars: rollupDesk(shown, "mall"),
     regionBars: rollupDesk(shown, "region"),
     lease,
-    marginNote: desk?.marginNote || "",
-    historyNote: desk?.historyNote || "",
+    marginNote: field(desk, "marginNote") || "",
+    historyNote: field(desk, "historyNote") || "",
   };
 }
 

@@ -49,7 +49,7 @@ Page({
     this.setData({ imported: { ...imported, text: event.detail.value } });
   },
   async extract() {
-    const text = this.data.imported?.text || "";
+    const text = (this.data.imported && this.data.imported.text) || "";
     if (!text.trim()) return;
     const parsed = await this.run(() => api.upload(text));
     if (!parsed) return;
@@ -66,9 +66,9 @@ Page({
   async confirm() {
     const edits = Object.fromEntries(this.data.edits.map((field) => [field.field_name, field.value]));
     const result = await this.run(() => api.confirm(this.data.draft.contractId, edits));
-    if (result?.storeId) {
+    if (result && result.storeId) {
       getApp().globalData.photoStoreId = result.storeId;
-      const period = getApp().globalData.period || getApp().globalData.snapshot?.period;
+      const period = getApp().globalData.period || (getApp().globalData.snapshot && getApp().globalData.snapshot.period);
       wx.navigateTo({ url: `/pages/journey/journey?id=${result.storeId}&year=${period.year}&month=${period.month}` });
     }
   },

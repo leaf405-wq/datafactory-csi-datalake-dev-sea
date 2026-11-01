@@ -24,7 +24,7 @@ function start(command, args) {
 const pageMirror = mirrorIpv6(5173);
 const api = start(process.execPath, ["server/index.js"]);
 start(npm, ["run", "dev", "--prefix", "client"]);
-console.log("打开 http://127.0.0.1:5173/");
+console.log("打开 http://127.0.0.1:3780/");
 
 function shutdown(code = 0) {
   pageMirror.close();

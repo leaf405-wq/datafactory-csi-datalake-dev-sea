@@ -255,5 +255,8 @@ test("小程序页面文件能通过语法检查，并且每页都有 wxml", () 
   }
   const project = JSON.parse(readFileSync(path.join(root, "project.config.json"), "utf8"));
   assert.equal(project.setting.urlCheck, false);
-  assert.equal(project.appid, "touristappid");
+  assert.equal(project.appid, "");
+  const rootProject = JSON.parse(readFileSync(path.resolve(root, "../project.config.json"), "utf8"));
+  assert.equal(rootProject.miniprogramRoot, "miniprogram/");
+  assert.equal(rootProject.setting.urlCheck, false);
 });

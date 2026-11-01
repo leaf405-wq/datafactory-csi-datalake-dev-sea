@@ -24,6 +24,7 @@ import {
   uploadContract,
 } from "./workflow.js";
 import { buildDesk, forecastStore, previewRent } from "./prd.js";
+import { attachFrontDoor } from "./frontDoor.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -141,13 +142,7 @@ app.post("/api/stores/:id/decision", wrap(async (req) => setDecision({
   actionPlan: req.body.actionPlan,
 })));
 
-const dist = path.resolve(__dirname, "../client/dist");
-app.use(express.static(dist));
-app.get(/^(?!\/api).*/, (_req, res) => {
-  res.sendFile(path.join(dist, "index.html"), (error) => {
-    if (error) res.status(404).json({ error: "前端还没有构建。开发时请打开 Vite 地址。" });
-  });
-});
+attachFrontDoor(app, { distDir: path.resolve(__dirname, "../client/dist") });
 
 const port = Number(process.env.PORT || 3780);
 await startAccess();
