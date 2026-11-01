@@ -53,6 +53,12 @@ store-ops/data/storeops.accdb
 已经克隆过时，在仓库根目录执行 `git pull origin cursor/store-ops-web-0eb9`，再进入 `store-ops` 重新 `npm run dev`。5173 或 3780 被占用时，先在原来的终端按 Ctrl+C 停掉上一次的 `npm run dev`。用 Microsoft Access 打开 `storeops.accdb` 之前也要先停掉它，避免文件被占用。
 
 
+## 微信小程序
+
+`miniprogram/` 是同一套经营功能的微信小程序。页面包括经营首页、新签合同、店览宽表、13 步泳道、租金引擎、盈利预测、每日预警和管理驾驶舱。读写仍走本机 `http://127.0.0.1:3780`，数据还是 `data/storeops.accdb`。手机开发者工具不直接打开 Access。
+
+先在 `store-ops` 目录执行 `npm run dev`。再用微信开发者工具导入 `store-ops/miniprogram`，详情里勾选「不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书」。AppID 用测试号即可。长按标题可以改接口地址，默认是 `http://127.0.0.1:3780`。接口只监听本机回环地址，真机预览需要把服务改到手机能访问的地址。
+
 右上角切换拓展部、营运部、财务部、高管。每一步只接受泳道上的那个部门。
 
 租金顺序：是否免租 → 判断模型 → 固定租金、销售额、扣点 → 扣点租金 → 两者取高走 MAX，两者取低走 MIN → 物业/推广/水电 → 扣减补贴 → 增值税 → 应付。合同原文只在本机抽取，不外发。

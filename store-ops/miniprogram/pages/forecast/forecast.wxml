@@ -1,0 +1,39 @@
+<view class="pad">
+  <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" show-filter="{{false}}" show-months="{{false}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:base="onBase" />
+  <view class="h2">5.4 新开店铺盈利能力预测</view>
+  <view class="lede">立项时填预估日销、客单价、毛利率、租金模型和投入。系统按月结引擎算租金，再给出月度损益、静态回收期、盈亏平衡日销和年化 IRR。销售额下降 10%、20% 会各算一次。不写入 Access。</view>
+  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view class="panel">
+    <view wx:for="{{fields}}" wx:key="key" class="field">
+      <text class="lab">{{item.label}}（{{item.unit}}）</text>
+      <input class="input" value="{{item.value}}" data-key="{{item.key}}" bindinput="setField" />
+    </view>
+    <view class="field">
+      <text class="lab">租金模型</text>
+      <picker mode="selector" range="{{models}}" range-key="label" value="{{modelIndex}}" bindchange="onModel">
+        <view class="input">{{modelLabel}}</view>
+      </picker>
+    </view>
+    <button class="btn" disabled="{{busy}}" bindtap="calc">测算盈利能力</button>
+    <view wx:if="{{result}}">
+      <view class="kpis">
+        <view class="kpi"><text class="num">{{result.profitText}}</text><text class="meta">月净利润</text></view>
+        <view class="kpi"><text class="num">{{result.paybackText}}</text><text class="meta">静态投资回收期</text></view>
+        <view class="kpi"><text class="num">{{result.breakEvenText}}</text><text class="meta">盈亏平衡日均销售</text></view>
+        <view class="kpi"><text class="num">{{result.irrText}}</text><text class="meta">年化 IRR</text></view>
+      </view>
+      <view wx:for="{{result.lines}}" wx:key="name" class="tr">
+        <text class="td col-store">{{item.name}}</text>
+        <text class="td">{{item.value}}</text>
+      </view>
+      <view class="h2">敏感性</view>
+      <view class="tr"><text class="th td">情景</text><text class="th td">月销售</text><text class="th td">月净利润</text><text class="th td">是否依然盈利</text></view>
+      <view class="tr" wx:for="{{result.sensitivity}}" wx:key="label">
+        <text class="td">{{item.label}}</text>
+        <text class="td">{{item.salesText}}</text>
+        <text class="td">{{item.profitText}}</text>
+        <text class="td">{{item.text}}</text>
+      </view>
+    </view>
+  </view>
+</view>

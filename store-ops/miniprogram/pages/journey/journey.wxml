@@ -1,0 +1,91 @@
+<view class="pad">
+  <chrome active="home" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" show-filter="{{false}}" show-months="{{false}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:base="onBase" />
+  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view wx:if="{{loading}}" class="meta">正在打开 Access 数据库</view>
+  <view wx:if="{{missing}}" class="lede">请从首页选择一家店。</view>
+  <block wx:else>
+    <view wx:if="{{showRail}}" class="panel">
+      <view wx:for="{{steps}}" wx:key="step" class="step-li {{item.state}}">
+        <text class="dot" style="color:{{item.fg}};background:{{item.bg}};border-color:{{item.color}}">{{item.step}}</text>
+        <view>
+          <view>{{item.title}}</view>
+          <view class="meta">{{item.who}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="panel">
+      <text class="tag">{{mallName}}</text>
+      <view class="h2">{{name}}</view>
+      <view class="meta">{{meta}}</view>
+      <view wx:if="{{address}}" class="meta">{{address}}</view>
+      <view wx:if="{{note}}" class="meta">{{note}}</view>
+      <view class="meta">{{hint}}</view>
+      <view wx:if="{{lane.done}}" class="done">已完成13步泳道</view>
+      <block wx:elif="{{lane.text}}">
+        <view class="rail">
+          <text wx:for="{{lane.cells}}" wx:for-item="cell" wx:key="n" class="dot" style="color:{{cell.fg}};background:{{cell.bg}};border-color:{{cell.color}}">{{cell.n}}</text>
+        </view>
+        <view class="meta">{{lane.text}}</view>
+        <view wx:if="{{lane.alert}}" class="alert">红色预警</view>
+      </block>
+      <view wx:if="{{showActivity}}">
+        <view class="h2">5　录入当月活动</view>
+        <view class="field"><text class="lab">特殊活动</text><input class="input" value="{{activityNote}}" bindinput="onNote" /></view>
+        <view class="field"><text class="lab">临时提点（小数，留空表示沿用合同）</text><input class="input" value="{{tempRate}}" placeholder="留空沿用合同" bindinput="onRate" /></view>
+        <view class="field"><text class="lab">补贴</text><input class="input" value="{{subsidy}}" bindinput="onSubsidy" /></view>
+        <button class="btn" disabled="{{role !== 'ops' || busy}}" bindtap="saveActivity">提交给系统</button>
+        <view wx:if="{{role !== 'ops'}}" class="meta">这一步由营运部提交。请先切换身份。</view>
+      </view>
+      <view wx:if="{{showCalc}}">
+        <view class="h2">6–7　接收 DW 销售并计算</view>
+        <view class="lede">系统读取本月 DW 销售，按免租、两者取高、附加费、补贴、增值税的顺序出账。</view>
+        <button class="btn" disabled="{{(role !== 'ops' && role !== 'finance') || busy}}" bindtap="calculate">计算本月租金</button>
+      </view>
+      <view wx:if="{{showTrace}}">
+        <view class="h2">租金计算过程</view>
+        <view class="meta">应付 {{payableText}} 元　租售比 {{ratioText}}</view>
+        <view wx:for="{{billAlerts}}" wx:key="id" class="meta"><text class="tag {{item.level}}">{{item.level}}</text> {{item.message}}</view>
+        <view wx:for="{{trace}}" wx:key="id" class="step-li">
+          <view><text>{{item.node}}</text> {{item.decision}} <text class="meta">{{item.detail}}</text></view>
+        </view>
+      </view>
+      <view wx:if="{{showMallIn}}">
+        <view class="h2">8　商场对账单已送到财务</view>
+        <button class="btn" disabled="{{role !== 'finance' || busy}}" bindtap="mallIn">登记收妥</button>
+      </view>
+      <view wx:if="{{showReconcile}}">
+        <view class="h2">9–11　上传商场账单并自动比对</view>
+        <view wx:for="{{mall}}" wx:key="key" class="field">
+          <text class="lab">{{item.label}}</text>
+          <input class="input" value="{{item.value}}" data-key="{{item.key}}" bindinput="onMall" />
+        </view>
+        <button class="btn" disabled="{{role !== 'finance' || busy}}" bindtap="reconcile">比对</button>
+      </view>
+      <view wx:if="{{showRecon}}">
+        <view class="h2">差异明细</view>
+        <view class="meta">系统 {{systemText}}　商场 {{mallText}}　差额 {{diffText}}</view>
+        <view class="tr"><text class="th td">项目</text><text class="th td">系统</text><text class="th td">商场</text><text class="th td">差额</text></view>
+        <view class="tr" wx:for="{{lines}}" wx:key="name">
+          <text class="td">{{item.name}}</text>
+          <text class="td">{{item.system}}</text>
+          <text class="td">{{item.mall}}</text>
+          <text class="td {{item.hot ? 'alert' : ''}}">{{item.diff}}</text>
+        </view>
+      </view>
+      <view wx:if="{{showResolve}}">
+        <view class="h2">12　确认无误，或发差异函</view>
+        <view class="field"><text class="lab">原因</text><input class="input" value="{{reason}}" bindinput="onReason" /></view>
+        <view class="row">
+          <button class="btn" data-resolution="accept" disabled="{{role !== 'finance' || busy}}" bindtap="resolve">确认无误</button>
+          <button class="ghost" data-resolution="dispute" disabled="{{role !== 'finance' || busy}}" bindtap="resolve">发起申诉</button>
+        </view>
+      </view>
+      <view wx:if="{{showPay}}">
+        <view class="h2">13　生成付款申请</view>
+        <button class="btn" disabled="{{role !== 'finance' || busy}}" bindtap="pay">按系统金额生成付款申请</button>
+      </view>
+      <view wx:if="{{showPayment}}" class="done">{{paymentText}}</view>
+      <view wx:if="{{showEarly}}" class="meta">本月泳道还停在合同阶段。已有档案的店，从第 5 步录入活动。</view>
+    </view>
+  </block>
+</view>

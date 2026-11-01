@@ -1,0 +1,30 @@
+<view class="pad">
+  <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" query="{{query}}" show-filter="{{true}}" show-months="{{true}}" count-text="{{countText}}" filter-placeholder="按区域、城市、店名、商场、电话筛选" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:month="onMonth" bind:query="onQuery" bind:base="onBase" />
+  <view class="h2">5.6 营业中店铺每日监控与预警</view>
+  <view class="lede">观察日定在 2026-03-20，时间进度按 20/31。销售用的是所选月份的月结数，不是当日流水。页面默认停在上月。预警标签用绿色。</view>
+  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view class="meta">{{marginNote}}</view>
+  <view class="meta">{{brdNote}}</view>
+  <view class="meta">{{historyNote}}</view>
+  <view class="panel">
+    <view class="tr"><text class="th td">预警维度</text><text class="th td">红色（严重）</text><text class="th td">橙色（警告）</text><text class="th td">黄色（关注）</text></view>
+    <view class="tr" wx:for="{{matrix}}" wx:key="id">
+      <text class="td">{{item.cells[0]}}</text>
+      <text class="td"><text class="tag green">{{item.cells[1]}}</text></text>
+      <text class="td"><text class="tag orange">{{item.cells[2]}}</text></text>
+      <text class="td"><text class="tag yellow">{{item.cells[3]}}</text></text>
+    </view>
+  </view>
+  <view class="panel" wx:for="{{rows}}" wx:key="storeId">
+    <view class="name">{{item.name}}</view>
+    <view class="meta">{{item.mall}}</view>
+    <view class="meta">销售 {{item.salesText}} · 应付 {{item.payableText}} · 租售比 {{item.ratioText}}</view>
+    <view class="meta">估算利润 {{item.profitText}} · 达成率 {{item.achievementText}}</view>
+    <view wx:if="{{item.quiet}}" class="tag green">正常</view>
+    <view wx:for="{{item.alerts}}" wx:for-item="alert" wx:key="id">
+      <text class="tag {{alert.level}}">{{alert.dimension}}</text>
+      <text class="meta"> {{alert.message}}</text>
+    </view>
+    <view wx:for="{{item.notes}}" wx:for-item="note" wx:key="*this" class="meta">{{note}}</view>
+  </view>
+</view>

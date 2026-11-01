@@ -1,0 +1,13 @@
+.chrome { padding: 8rpx 0 12rpx; }
+.brand { display: flex; gap: 16rpx; align-items: center; }
+.mark { font-size: 22rpx; letter-spacing: 2rpx; border: 1rpx solid #241910; padding: 8rpx 10rpx; }
+.sub { display: block; color: #6f6258; font-size: 22rpx; }
+.title { display: block; font-size: 36rpx; font-weight: 600; }
+.roles, .nav, .months { width: 100%; white-space: nowrap; margin-top: 12rpx; }
+.chip { display: inline-block; margin-right: 10rpx; }
+.photo { width: 100%; height: 280rpx; border-radius: 20rpx; margin-top: 16rpx; background: #efe6dc; }
+.photo-cap { margin-top: 8rpx; }
+.photo-name { display: block; font-weight: 600; }
+.hint { margin-top: 12rpx; }
+.tools { margin-top: 16rpx; }
+.input { background: #fff; border: 1rpx solid #e4d8cc; border-radius: 12rpx; padding: 14rpx 16rpx; margin-bottom: 8rpx; }

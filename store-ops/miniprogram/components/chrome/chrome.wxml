@@ -1,0 +1,29 @@
+<view class="chrome">
+  <view class="brand" bindlongpress="onBase">
+    <text class="mark">MAX MARA</text>
+    <view>
+      <text class="sub">{{headline}}</text>
+      <text class="title">零售经营系统</text>
+    </view>
+  </view>
+  <scroll-view scroll-x class="roles" enable-flex>
+    <text wx:for="{{roles}}" wx:key="id" data-id="{{item.id}}" class="chip {{item.on ? 'on' : ''}}" bindtap="onRole">{{item.label}}</text>
+  </scroll-view>
+  <image wx:if="{{photoUrl}}" class="photo" src="{{photoUrl}}" mode="aspectFill" />
+  <view wx:if="{{photoName}}" class="photo-cap">
+    <text class="photo-name">{{photoName}}</text>
+    <text class="meta">{{photoMeta}} · 实景样本</text>
+  </view>
+  <scroll-view scroll-x class="nav" enable-flex>
+    <text wx:for="{{pages}}" wx:key="id" data-id="{{item.id}}" class="chip {{active === item.id ? 'on' : ''}}" bindtap="onNav">{{item.label}}</text>
+  </scroll-view>
+  <view class="meta hint">当前身份决定哪一步能提交。泳道顺序不能跳。长按标题可改接口地址。</view>
+  <view wx:if="{{showFilter || showMonths}}" class="tools">
+    <input wx:if="{{showFilter}}" class="input" value="{{query}}" placeholder="{{filterPlaceholder}}" bindinput="onQuery" />
+    <text wx:if="{{countText}}" class="meta">{{countText}}</text>
+    <scroll-view wx:if="{{showMonths}}" scroll-x class="months" enable-flex>
+      <text class="meta">经营历史记录（按月）</text>
+      <text wx:for="{{chips}}" wx:key="key" data-key="{{item.key}}" class="chip {{item.active ? 'on' : ''}}" bindtap="onMonth">{{item.label}}</text>
+    </scroll-view>
+  </view>
+</view>

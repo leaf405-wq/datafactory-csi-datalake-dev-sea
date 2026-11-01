@@ -1,0 +1,46 @@
+<view class="pad">
+  <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" query="{{query}}" show-filter="{{true}}" show-months="{{true}}" count-text="{{countText}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:month="onMonth" bind:query="onQuery" bind:base="onBase" />
+  <view class="h2">店览</view>
+  <view class="lede">52 家原有店加 2026 年 11 月新签的上海后滩太古里店。11 月之前的月份是 52 / 53 家。附件里写了店名、地址、电话和旗舰类型的，按附件写入；其余地址和电话来自品牌门店名录。</view>
+  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view wx:if="{{loading}}" class="meta">正在打开 Access 数据库</view>
+  <scroll-view scroll-x class="panel">
+    <view class="table">
+      <view class="tr">
+        <text class="th td">品牌</text>
+        <text class="th td col-store">店铺</text>
+        <text class="th td">区域</text>
+        <text class="th td">城市</text>
+        <text class="th td">业主</text>
+        <text class="th td">租约到期</text>
+        <text class="th td">动作</text>
+        <text class="th td">{{salesHead}}</text>
+        <text class="th td">应付租金</text>
+        <text class="th td">租售比</text>
+        <text class="th td col-step">步骤</text>
+      </view>
+      <view class="tr" wx:for="{{rows}}" wx:key="id">
+        <text class="td">{{item.brand}}</text>
+        <view class="td col-store">
+          <text class="link" data-id="{{item.id}}" bindtap="openLane">{{item.name}}</text>
+          <view class="meta">{{item.typeLine}}</view>
+          <view class="meta">{{item.address}}</view>
+          <view class="meta">{{item.phone}}</view>
+        </view>
+        <text class="td">{{item.region}}</text>
+        <text class="td">{{item.city}}</text>
+        <text class="td">{{item.landlord}}</text>
+        <text class="td">{{item.leaseEnd}}</text>
+        <view class="td">
+          <picker mode="selector" range="{{decisions}}" value="{{item.decisionIndex}}" disabled="{{!canDecide || busy}}" data-id="{{item.id}}" bindchange="onDecision">
+            <view class="picker">{{item.decision}}</view>
+          </picker>
+        </view>
+        <text class="td">{{item.salesText}}</text>
+        <text class="td">{{item.payableText}}</text>
+        <text class="td">{{item.ratioText}}</text>
+        <text class="td col-step {{item.stepDone ? 'done' : ''}} {{item.stepAlert ? 'alert' : ''}}">{{item.stepText}}</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

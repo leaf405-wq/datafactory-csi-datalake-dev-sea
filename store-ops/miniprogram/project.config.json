@@ -1,0 +1,27 @@
+{
+  "miniprogramRoot": "./",
+  "projectname": "maxmara-store-ops",
+  "description": "MaxMara经营管理。功能与网站一致，数据走本机 Access。",
+  "appid": "touristappid",
+  "compileType": "miniprogram",
+  "libVersion": "3.6.6",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": false,
+    "compileWorklet": false,
+    "uploadWithSourceMap": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "condition": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  }
+}
