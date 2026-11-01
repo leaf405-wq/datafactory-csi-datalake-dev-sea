@@ -370,11 +370,11 @@ function Stores({ data, period, months, accounting, calendar, onPeriod, role, on
         <MonthHistory months={months} selected={period} accounting={accounting} calendar={calendar} onPeriod={onPeriod} />
       </div>
       <div className="panel" style={{ overflowX: "auto" }}>
-        <table>
+        <table className="store-directory">
           <thead>
             <tr>
               {["品牌", "店铺", "区域", "城市", "业主", "租约到期", "动作", `${period.month}月销售`, "应付租金", "租售比", "步骤"].map((name) => (
-                <th key={name}>{name}</th>
+                <th key={name} className={name === "店铺" ? "col-store" : name === "步骤" ? "col-step" : undefined}>{name}</th>
               ))}
             </tr>
           </thead>
@@ -386,7 +386,7 @@ function Stores({ data, period, months, accounting, calendar, onPeriod, role, on
               return (
                 <tr key={store.id} onMouseEnter={() => onPreview(store.id)}>
                   <td>{store.brand}</td>
-                  <td>
+                  <td className="col-store">
                     <button className="linkish" onClick={() => onOpen(store.id)}>{store.name}</button>
                     <div className="meta">{store.store_type || "精品店"} · {store.listed_from || "样本"} · {store.hours || ""}</div>
                     <div className="meta">{store.address || ""}</div>
@@ -416,7 +416,7 @@ function Stores({ data, period, months, accounting, calendar, onPeriod, role, on
                   <td className="num">{sales ? money(sales.sales) : "—"}</td>
                   <td className="num">{bill ? money(bill.payable) : "—"}</td>
                   <td className="num">{bill?.rent_to_sales ? `${(Number(bill.rent_to_sales) * 100).toFixed(1)}%` : "—"}</td>
-                  <td>{step >= 13 ? <span className="lane-done">该泳道13步全部完成</span> : laneUnfinished(data, store.id, period) ? <span className="lane-alert">未完成 · 红色预警</span> : (step ? `进行到第 ${step} 步` : "—")}</td>
+                  <td className="col-step">{step >= 13 ? <span className="lane-done">该泳道13步全部完成</span> : laneUnfinished(data, store.id, period) ? <span className="lane-alert">未完成 · 红色预警</span> : (step ? `进行到第 ${step} 步` : "—")}</td>
                 </tr>
               );
             })}
@@ -711,7 +711,7 @@ function BillTrace({ bill, alerts }) {
             {item.decision}　<em>{item.detail}</em>
           </li>
         ))}
-      </ol>}
+      </ol>
     </div>
   );
 }

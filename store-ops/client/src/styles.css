@@ -141,6 +141,10 @@ label.action-status progress {
 }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.store-directory { width: max-content; min-width: 100%; }
+table.store-directory .col-store,
+table.store-directory .col-step { width: 240px; min-width: 240px; }
+table.store-directory .col-step { white-space: nowrap; }
 th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .num { font-variant-numeric: tabular-nums; text-align: right; }
 .diff { color: var(--bad); }
