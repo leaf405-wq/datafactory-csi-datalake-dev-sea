@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { enableWechatServicePort, servicePort, trustWechatProject } from "./load-wechat.js";
+import { enableWechatServicePort, pointWechatAtMiniProgram, servicePort, trustWechatProject } from "./load-wechat.js";
 
 test("把关掉的微信服务端口写成打开，并保留原来的端口", () => {
   const home = mkdtempSync(path.join(tmpdir(), "wechat-home-"));
@@ -23,4 +23,25 @@ test("把关掉的微信服务端口写成打开，并保留原来的端口", ()
   assert.equal(trustWechatProject(project, home), 1);
   const map = JSON.parse(readFileSync(path.join(dir, "hash_key_map_2.json"), "utf8"));
   assert.equal(map.b72da75d79277d2f5f9c30c9177be57e, "reduxPersist:settings");
+});
+
+test("外层示例项目改用里面的 maxmara-store-ops，不再编译 Weixin 首页", () => {
+  const home = mkdtempSync(path.join(tmpdir(), "wechat-project-"));
+  const parent = path.join(home, "WeChatProjects", "MAXMARA");
+  mkdirSync(path.join(parent, "maxmara-store-ops"), { recursive: true });
+  writeFileSync(path.join(parent, "maxmara-store-ops", "app.json"), "{}\n");
+  writeFileSync(path.join(parent, "project.config.json"), `${JSON.stringify({
+    projectname: "MAXMARA",
+    appid: "wx1234567890abcd",
+    setting: { urlCheck: true },
+  })}\n`);
+
+  const pointed = pointWechatAtMiniProgram(home);
+  assert.deepEqual(pointed, [parent]);
+  const config = JSON.parse(readFileSync(path.join(parent, "project.config.json"), "utf8"));
+  assert.equal(config.miniprogramRoot, "maxmara-store-ops/");
+  assert.equal(config.appid, "wx1234567890abcd");
+  assert.equal(config.setting.urlCheck, false);
+  const app = JSON.parse(readFileSync(path.join(parent, "maxmara-store-ops", "app.json"), "utf8"));
+  assert.equal(app.window.navigationBarTitleText, "MaxMara经营系统");
 });
