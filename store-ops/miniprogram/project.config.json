@@ -17,7 +17,7 @@
     }
   },
   "compileType": "miniprogram",
-  "appid": "",
+  "appid": "touristappid",
   "projectname": "maxmara-store-ops",
   "libVersion": "3.4.0",
   "condition": {}

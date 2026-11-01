@@ -9,6 +9,7 @@
     "server": "node server/index.js",
     "client": "npm run dev --prefix client",
     "build": "npm run build --prefix client",
+    "wechat": "node server/load-wechat.js",
     "test": "node --test server/rentEngine.test.js server/parser.test.js server/importFile.test.js server/prd.test.js server/catalog.test.js server/photos.test.js server/period.test.js server/closeMonths.test.js server/miniprogram-view.test.js server/frontDoor.test.js"
   },
   "dependencies": {

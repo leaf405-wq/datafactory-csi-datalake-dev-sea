@@ -2,7 +2,7 @@
   "miniprogramRoot": "miniprogram/",
   "projectname": "maxmara-store-ops",
   "description": "MaxMara经营管理。用微信开发者工具打开 store-ops 目录。",
-  "appid": "",
+  "appid": "touristappid",
   "compileType": "miniprogram",
   "libVersion": "3.4.0",
   "setting": {
