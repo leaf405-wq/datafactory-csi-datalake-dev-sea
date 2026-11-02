@@ -6,7 +6,7 @@
   <view class="panel">
     <view wx:for="{{fields}}" wx:key="key" class="field">
       <text class="lab">{{item.label}}（{{item.unit}}）</text>
-      <input class="input" value="{{item.value}}" data-key="{{item.key}}" bindinput="setField" />
+      <view class="field-box"><input class="input" value="{{item.value}}" data-key="{{item.key}}" bindinput="setField" /></view>
     </view>
     <view class="field">
       <text class="lab">租金模型</text>

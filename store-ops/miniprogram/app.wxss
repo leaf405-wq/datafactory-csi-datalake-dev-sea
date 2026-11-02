@@ -43,16 +43,46 @@ button::after { border: none; }
 .ghost { background: transparent; color: #241910; border: 1rpx solid #e4d8cc; }
 .ghost.on, .chip.on { background: #241910; color: #f7f1ea; border-color: #241910; }
 .chip { border: 1rpx solid #e4d8cc; border-radius: 999rpx; padding: 8rpx 16rpx; font-size: 24rpx; background: #fffdf9; }
-.field { margin: 12rpx 0; }
+.field { margin: 12rpx 0; width: 100%; }
 .field .lab { display: block; color: #6f6258; font-size: 24rpx; margin-bottom: 6rpx; }
-.input, .area, picker, picker .picker {
+.field-box {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1rpx solid #e4d8cc;
+  border-radius: 12rpx;
+  min-height: 80rpx;
+  padding: 0 20rpx;
+}
+.field-box .input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 80rpx;
+  min-height: 80rpx;
+  line-height: 80rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 30rpx;
+  color: #241910;
+}
+.input, .area, picker .picker {
   display: block;
   width: 100%;
   box-sizing: border-box;
   background: #fff;
   border: 1rpx solid #e4d8cc;
   border-radius: 12rpx;
-  padding: 14rpx 16rpx;
+  padding: 0 20rpx;
+  min-height: 80rpx;
+  line-height: 80rpx;
+  font-size: 30rpx;
+  color: #241910;
 }
 .area { min-height: 180rpx; width: 100%; }
 .err { color: #9d2c2c; margin: 12rpx 0; text-decoration: underline; }

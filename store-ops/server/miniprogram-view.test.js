@@ -318,7 +318,13 @@ test("小程序页面文件能通过语法检查，并且每页都有 wxml", () 
   const chromeWxml = readFileSync(path.join(root, "components/chrome/chrome.wxml"), "utf8");
   assert.match(chromeWxml, /<view class="nav">/);
   assert.doesNotMatch(chromeWxml, /scroll-view[^>]*class="nav"/);
+  const rent = readFileSync(path.join(root, "pages/rent/rent.wxml"), "utf8");
+  const forecast = readFileSync(path.join(root, "pages/forecast/forecast.wxml"), "utf8");
+  assert.match(rent, /class="field-box"><input class="input"/);
+  assert.match(forecast, /class="field-box"><input class="input"/);
   const sheet = readFileSync(path.join(root, "app.wxss"), "utf8");
+  assert.match(sheet, /\.field-box \{[^}]*display:\s*flex;[^}]*width:\s*100%;/s);
+  assert.match(sheet, /\.field-box \.input \{[^}]*flex:\s*1;[^}]*width:\s*100%;/s);
   assert.match(sheet, /\.tr \{[^}]*flex-wrap:\s*wrap;/s);
   assert.doesNotMatch(sheet, /min-width:\s*1800rpx/);
   const chrome = readFileSync(path.join(root, "components/chrome/chrome.wxss"), "utf8");

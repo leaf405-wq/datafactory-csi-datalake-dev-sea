@@ -19,21 +19,21 @@
         <view class="input">{{modelLabel}}</view>
       </picker>
     </view>
-    <view class="field"><text class="lab">当月实际销售额（元）</text><input class="input" value="{{form.sales}}" data-key="sales" bindinput="setField" /></view>
-    <view class="field"><text class="lab">合同固定租金（元/月）</text><input class="input" value="{{form.fixedRent}}" data-key="fixedRent" bindinput="setField" /></view>
-    <view class="field"><text class="lab">商场扣点比例（%）</text><input class="input" value="{{form.rate}}" data-key="rate" bindinput="setField" /></view>
-    <view class="field"><text class="lab">附加物业费（元/月）</text><input class="input" value="{{form.propertyFee}}" data-key="propertyFee" bindinput="setField" /></view>
+    <view class="field"><text class="lab">当月实际销售额（元）</text><view class="field-box"><input class="input" value="{{form.sales}}" data-key="sales" bindinput="setField" /></view></view>
+    <view class="field"><text class="lab">合同固定租金（元/月）</text><view class="field-box"><input class="input" value="{{form.fixedRent}}" data-key="fixedRent" bindinput="setField" /></view></view>
+    <view class="field"><text class="lab">商场扣点比例（%）</text><view class="field-box"><input class="input" value="{{form.rate}}" data-key="rate" bindinput="setField" /></view></view>
+    <view class="field"><text class="lab">附加物业费（元/月）</text><view class="field-box"><input class="input" value="{{form.propertyFee}}" data-key="propertyFee" bindinput="setField" /></view></view>
     <block wx:if="{{form.model === 'BASE_PLUS_OVERAGE'}}">
-      <view class="field"><text class="lab">保底销售额（元）</text><input class="input" value="{{form.minSales}}" data-key="minSales" bindinput="setField" /></view>
-      <view class="field"><text class="lab">超额扣点（%）</text><input class="input" value="{{form.overageRate}}" data-key="overageRate" bindinput="setField" /></view>
+      <view class="field"><text class="lab">保底销售额（元）</text><view class="field-box"><input class="input" value="{{form.minSales}}" data-key="minSales" bindinput="setField" /></view></view>
+      <view class="field"><text class="lab">超额扣点（%）</text><view class="field-box"><input class="input" value="{{form.overageRate}}" data-key="overageRate" bindinput="setField" /></view></view>
     </block>
-    <view wx:if="{{form.model === 'CAPPED'}}" class="field"><text class="lab">封顶金额（元）</text><input class="input" value="{{form.capAmount}}" data-key="capAmount" bindinput="setField" /></view>
+    <view wx:if="{{form.model === 'CAPPED'}}" class="field"><text class="lab">封顶金额（元）</text><view class="field-box"><input class="input" value="{{form.capAmount}}" data-key="capAmount" bindinput="setField" /></view></view>
     <block wx:if="{{form.model === 'TIERED'}}">
-      <view class="field"><text class="lab">第一档上限（元）</text><input class="input" value="{{form.tier1}}" data-key="tier1" bindinput="setField" /></view>
-      <view class="field"><text class="lab">第一档扣点（%）</text><input class="input" value="{{form.rate1}}" data-key="rate1" bindinput="setField" /></view>
-      <view class="field"><text class="lab">第二档上限（元）</text><input class="input" value="{{form.tier2}}" data-key="tier2" bindinput="setField" /></view>
-      <view class="field"><text class="lab">第二档扣点（%）</text><input class="input" value="{{form.rate2}}" data-key="rate2" bindinput="setField" /></view>
-      <view class="field"><text class="lab">以上扣点（%）</text><input class="input" value="{{form.rate3}}" data-key="rate3" bindinput="setField" /></view>
+      <view class="field"><text class="lab">第一档上限（元）</text><view class="field-box"><input class="input" value="{{form.tier1}}" data-key="tier1" bindinput="setField" /></view></view>
+      <view class="field"><text class="lab">第一档扣点（%）</text><view class="field-box"><input class="input" value="{{form.rate1}}" data-key="rate1" bindinput="setField" /></view></view>
+      <view class="field"><text class="lab">第二档上限（元）</text><view class="field-box"><input class="input" value="{{form.tier2}}" data-key="tier2" bindinput="setField" /></view></view>
+      <view class="field"><text class="lab">第二档扣点（%）</text><view class="field-box"><input class="input" value="{{form.rate2}}" data-key="rate2" bindinput="setField" /></view></view>
+      <view class="field"><text class="lab">以上扣点（%）</text><view class="field-box"><input class="input" value="{{form.rate3}}" data-key="rate3" bindinput="setField" /></view></view>
     </block>
     <view class="meta">填 18 表示 18%。这个演示的应付 = 模型租金 + 物业费。</view>
     <button class="btn" disabled="{{busy}}" bindtap="calc">计算当月应付租金</button>

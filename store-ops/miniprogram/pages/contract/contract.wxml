@@ -28,7 +28,7 @@
     <view class="h2">关键字 · 请人工确认 · 置信度 {{draft.confidenceText}}</view>
     <view wx:for="{{edits}}" wx:key="field_name" class="field">
       <text class="lab">{{item.label}}<text wx:if="{{item.needs_review}}">　待复核</text></text>
-      <input class="input" value="{{item.value}}" data-name="{{item.field_name}}" bindinput="onEdit" />
+      <view class="field-box"><input class="input" value="{{item.value}}" data-name="{{item.field_name}}" bindinput="onEdit" /></view>
     </view>
     <button class="btn" disabled="{{!canWrite || busy}}" bindtap="confirm">确认并生成店铺档案</button>
   </view>

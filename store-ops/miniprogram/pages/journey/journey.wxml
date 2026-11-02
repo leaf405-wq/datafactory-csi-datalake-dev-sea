@@ -30,9 +30,9 @@
       </block>
       <view wx:if="{{showActivity}}">
         <view class="h2">5　录入当月活动</view>
-        <view class="field"><text class="lab">特殊活动</text><input class="input" value="{{activityNote}}" bindinput="onNote" /></view>
-        <view class="field"><text class="lab">临时提点（小数，留空表示沿用合同）</text><input class="input" value="{{tempRate}}" placeholder="留空沿用合同" bindinput="onRate" /></view>
-        <view class="field"><text class="lab">补贴</text><input class="input" value="{{subsidy}}" bindinput="onSubsidy" /></view>
+        <view class="field"><text class="lab">特殊活动</text><view class="field-box"><input class="input" value="{{activityNote}}" bindinput="onNote" /></view></view>
+        <view class="field"><text class="lab">临时提点（小数，留空表示沿用合同）</text><view class="field-box"><input class="input" value="{{tempRate}}" placeholder="留空沿用合同" bindinput="onRate" /></view></view>
+        <view class="field"><text class="lab">补贴</text><view class="field-box"><input class="input" value="{{subsidy}}" bindinput="onSubsidy" /></view></view>
         <button class="btn" disabled="{{role !== 'ops' || busy}}" bindtap="saveActivity">提交给系统</button>
         <view wx:if="{{role !== 'ops'}}" class="meta">这一步由营运部提交。请先切换身份。</view>
       </view>
@@ -57,7 +57,7 @@
         <view class="h2">9–11　上传商场账单并自动比对</view>
         <view wx:for="{{mall}}" wx:key="key" class="field">
           <text class="lab">{{item.label}}</text>
-          <input class="input" value="{{item.value}}" data-key="{{item.key}}" bindinput="onMall" />
+          <view class="field-box"><input class="input" value="{{item.value}}" data-key="{{item.key}}" bindinput="onMall" /></view>
         </view>
         <button class="btn" disabled="{{role !== 'finance' || busy}}" bindtap="reconcile">比对</button>
       </view>
@@ -74,7 +74,7 @@
       </view>
       <view wx:if="{{showResolve}}">
         <view class="h2">12　确认无误，或发差异函</view>
-        <view class="field"><text class="lab">原因</text><input class="input" value="{{reason}}" bindinput="onReason" /></view>
+        <view class="field"><text class="lab">原因</text><view class="field-box"><input class="input" value="{{reason}}" bindinput="onReason" /></view></view>
         <view class="row">
           <button class="btn" data-resolution="accept" disabled="{{role !== 'finance' || busy}}" bindtap="resolve">确认无误</button>
           <button class="ghost" data-resolution="dispute" disabled="{{role !== 'finance' || busy}}" bindtap="resolve">发起申诉</button>
