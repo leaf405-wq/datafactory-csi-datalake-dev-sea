@@ -169,10 +169,26 @@ label.action-status progress {
 }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-table.store-directory { width: max-content; min-width: 100%; }
+.directory-view { max-width: 100%; overflow-x: auto; }
+table.store-directory { width: 100%; min-width: 0; table-layout: auto; }
+table.store-directory th,
+table.store-directory td { padding: 8px 4px; }
+table.store-directory .col-brand,
+table.store-directory .col-region,
+table.store-directory .col-city,
+table.store-directory .col-lease,
+table.store-directory .col-sales,
+table.store-directory .col-pay,
+table.store-directory .col-ratio,
+table.store-directory .col-step { width: 1%; white-space: nowrap; }
 table.store-directory .col-store,
-table.store-directory .col-step { width: 240px; min-width: 240px; }
-table.store-directory .col-step { white-space: nowrap; }
+table.store-directory .col-owner,
+table.store-directory .col-action { overflow-wrap: anywhere; }
+table.store-directory .col-step .lane-done,
+table.store-directory .col-step .lane-alert { display: inline; margin: 0; white-space: nowrap; }
+table.store-directory .col-action { width: 9rem; }
+table.store-directory .col-action .action { display: block; width: 100%; max-width: 100%; }
+table.store-directory .col-action select { width: 100%; min-width: 9rem; font-size: 13px; padding: 6px 2px; }
 th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .num { font-variant-numeric: tabular-nums; text-align: right; }
 .diff { color: var(--bad); }

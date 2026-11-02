@@ -419,6 +419,20 @@ function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, on
   );
 }
 
+const DIRECTORY_COLUMNS = [
+  { className: "col-brand", label: () => "品牌" },
+  { className: "col-store", label: () => "店铺" },
+  { className: "col-region", label: () => "区域" },
+  { className: "col-city", label: () => "城市" },
+  { className: "col-owner", label: () => "业主" },
+  { className: "col-lease", label: () => "租约到期" },
+  { className: "col-action", label: () => "动作" },
+  { className: "col-sales", label: (period) => `${period.month}月销售` },
+  { className: "col-pay", label: () => "应付租金" },
+  { className: "col-ratio", label: () => "租售比" },
+  { className: "col-step", label: () => "步骤" },
+];
+
 function Stores({ data, period, months, accounting, calendar, onPeriod, role, onOpen, onPreview, onRun, api, busyId }) {
   const [query, setQuery] = useState("");
   const listed = listedStores(data.stores);
@@ -435,12 +449,15 @@ function Stores({ data, period, months, accounting, calendar, onPeriod, role, on
         <span className="meta">显示 {shown.length} / {listed.length} 家</span>
         <MonthHistory months={months} selected={period} accounting={accounting} calendar={calendar} onPeriod={onPeriod} />
       </div>
-      <div className="panel" style={{ overflowX: "auto" }}>
+      <div className="panel directory-view">
         <table className="store-directory">
+          <colgroup>
+            {DIRECTORY_COLUMNS.map((column) => <col key={column.className} className={column.className} />)}
+          </colgroup>
           <thead>
             <tr>
-              {["品牌", "店铺", "区域", "城市", "业主", "租约到期", "动作", `${period.month}月销售`, "应付租金", "租售比", "步骤"].map((name) => (
-                <th key={name} className={name === "店铺" ? "col-store" : name === "步骤" ? "col-step" : undefined}>{name}</th>
+              {DIRECTORY_COLUMNS.map((column) => (
+                <th key={column.className} className={column.className}>{column.label(period)}</th>
               ))}
             </tr>
           </thead>
@@ -451,18 +468,18 @@ function Stores({ data, period, months, accounting, calendar, onPeriod, role, on
               const step = laneStep(data, store.id, period);
               return (
                 <tr key={store.id} onMouseEnter={() => onPreview(store.id)}>
-                  <td>{store.brand}</td>
+                  <td className="col-brand">{store.brand}</td>
                   <td className="col-store">
                     <button className="linkish" onClick={() => onOpen(store.id)}>{store.name}</button>
                     <div className="meta">{store.store_type || "精品店"} · {store.listed_from || "样本"} · {store.hours || ""}</div>
                     <div className="meta">{store.address || ""}</div>
                     <div className="meta">{store.phone || "电话未提供"}</div>
                   </td>
-                  <td>{store.region}</td>
-                  <td>{store.city}</td>
-                  <td>{store.landlord}</td>
-                  <td>{store.lease_end}</td>
-                  <td>
+                  <td className="col-region">{store.region}</td>
+                  <td className="col-city">{store.city}</td>
+                  <td className="col-owner">{store.landlord}</td>
+                  <td className="col-lease">{store.lease_end}</td>
+                  <td className="col-action">
                     <Action id={`decision-${store.id}`} busyId={busyId} pending="正在保存动作">
                       <select
                         id={`decision-${store.id}`}
@@ -479,9 +496,9 @@ function Stores({ data, period, months, accounting, calendar, onPeriod, role, on
                       </select>
                     </Action>
                   </td>
-                  <td className="num">{sales ? money(sales.sales) : "—"}</td>
-                  <td className="num">{bill ? money(bill.payable) : "—"}</td>
-                  <td className="num">{bill?.rent_to_sales ? `${(Number(bill.rent_to_sales) * 100).toFixed(1)}%` : "—"}</td>
+                  <td className="num col-sales">{sales ? money(sales.sales) : "—"}</td>
+                  <td className="num col-pay">{bill ? money(bill.payable) : "—"}</td>
+                  <td className="num col-ratio">{bill?.rent_to_sales ? `${(Number(bill.rent_to_sales) * 100).toFixed(1)}%` : "—"}</td>
                   <td className="col-step">{step >= 13 ? <span className="lane-done">已完成13步泳道</span> : laneUnfinished(data, store.id, period) ? <span className="lane-alert">第 {step + 1} / 13 步 · 红色预警</span> : (step ? `第 ${Math.min(step + 1, 13)} / 13 步` : "—")}</td>
                 </tr>
               );
