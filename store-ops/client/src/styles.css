@@ -63,7 +63,14 @@ p { margin: 0; }
   max-height: 100vh;
   overflow: auto;
 }
-.nav button { display: block; width: 100%; text-align: left; margin-bottom: 8px; }
+.nav button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
 .main { padding: 28px 36px 64px; max-width: 1180px; }
 .lede { max-width: 68ch; color: var(--muted); margin: 8px 0 22px; }
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }

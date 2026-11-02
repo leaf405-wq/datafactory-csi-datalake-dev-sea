@@ -5,6 +5,7 @@
 .title { display: block; font-size: 36rpx; font-weight: 600; }
 .roles, .nav, .months { width: 100%; white-space: nowrap; margin-top: 12rpx; }
 .chip { display: inline-block; margin-right: 10rpx; }
+.nav .chip { font-size: 32rpx; font-weight: 700; padding: 12rpx 22rpx; }
 .photo { width: 100%; height: 280rpx; border-radius: 20rpx; margin-top: 16rpx; background: #efe6dc; }
 .photo-cap { margin-top: 8rpx; }
 .photo-name { display: block; font-weight: 600; }
