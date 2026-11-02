@@ -64,12 +64,12 @@
       <view wx:if="{{showRecon}}">
         <view class="h2">差异明细</view>
         <view class="meta">系统 {{systemText}}　商场 {{mallText}}　差额 {{diffText}}</view>
-        <view class="tr"><text class="th td">项目</text><text class="th td">系统</text><text class="th td">商场</text><text class="th td">差额</text></view>
+        <view class="tr"><view class="th td">项目</view><view class="th td">系统</view><view class="th td">商场</view><view class="th td">差额</view></view>
         <view class="tr" wx:for="{{lines}}" wx:key="name">
-          <text class="td">{{item.name}}</text>
-          <text class="td">{{item.system}}</text>
-          <text class="td">{{item.mall}}</text>
-          <text class="td {{item.hot ? 'alert' : ''}}">{{item.diff}}</text>
+          <view class="td">{{item.name}}</view>
+          <view class="td">{{item.system}}</view>
+          <view class="td">{{item.mall}}</view>
+          <view class="td {{item.hot ? 'alert' : ''}}">{{item.diff}}</view>
         </view>
       </view>
       <view wx:if="{{showResolve}}">

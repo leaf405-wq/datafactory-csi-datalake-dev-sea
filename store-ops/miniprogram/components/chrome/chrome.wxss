@@ -3,15 +3,22 @@
 .mark { font-size: 22rpx; letter-spacing: 2rpx; border: 1rpx solid #241910; padding: 8rpx 10rpx; }
 .sub { display: block; color: #6f6258; font-size: 22rpx; }
 .title { display: block; font-size: 36rpx; font-weight: 600; }
-.roles, .nav, .months { width: 100%; white-space: nowrap; margin-top: 12rpx; }
-.chip { display: inline-block; margin-right: 10rpx; }
+.roles, .nav, .months {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  margin-top: 12rpx;
+}
+.chip { display: inline-block; margin: 0 12rpx 12rpx 0; }
 .nav .chip {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 700;
   color: #1a56c4;
   background: #e7f0ff;
   border: 2rpx solid #1a56c4;
   padding: 12rpx 22rpx;
+  margin: 0 12rpx 12rpx 0;
 }
 .nav .chip.on { color: #ffffff; background: #1a56c4; border-color: #1a56c4; }
 .photo { width: 100%; height: 280rpx; border-radius: 20rpx; margin-top: 16rpx; background: #efe6dc; }

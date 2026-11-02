@@ -7,12 +7,12 @@
   <view class="meta">{{brdNote}}</view>
   <view class="meta">{{historyNote}}</view>
   <view class="panel">
-    <view class="tr"><text class="th td">预警维度</text><text class="th td severe-head">红色（严重）</text><text class="th td">橙色（警告）</text><text class="th td">黄色（关注）</text></view>
+    <view class="tr"><view class="th td">预警维度</view><view class="th td severe-head">红色（严重）</view><view class="th td">橙色（警告）</view><view class="th td">黄色（关注）</view></view>
     <view class="tr" wx:for="{{matrix}}" wx:key="id">
-      <text class="td">{{item.cells[0]}}</text>
+      <view class="td">{{item.cells[0]}}</view>
       <view class="td"><view class="tag severe">{{item.cells[1]}}</view></view>
-      <text class="td"><text class="tag orange">{{item.cells[2]}}</text></text>
-      <text class="td"><text class="tag yellow">{{item.cells[3]}}</text></text>
+      <view class="td"><view class="tag orange">{{item.cells[2]}}</view></view>
+      <view class="td"><view class="tag yellow">{{item.cells[3]}}</view></view>
     </view>
   </view>
   <view class="panel" wx:for="{{rows}}" wx:key="storeId">

@@ -23,16 +23,16 @@
         <view class="kpi"><text class="num">{{result.irrText}}</text><text class="meta">年化 IRR</text></view>
       </view>
       <view wx:for="{{result.lines}}" wx:key="name" class="tr">
-        <text class="td col-store">{{item.name}}</text>
-        <text class="td">{{item.value}}</text>
+        <view class="td col-store">{{item.name}}</view>
+        <view class="td">{{item.value}}</view>
       </view>
       <view class="h2">敏感性</view>
-      <view class="tr"><text class="th td">情景</text><text class="th td">月销售</text><text class="th td">月净利润</text><text class="th td">是否依然盈利</text></view>
+      <view class="tr"><view class="th td">情景</view><view class="th td">月销售</view><view class="th td">月净利润</view><view class="th td col-store">是否依然盈利</view></view>
       <view class="tr" wx:for="{{result.sensitivity}}" wx:key="label">
-        <text class="td">{{item.label}}</text>
-        <text class="td">{{item.salesText}}</text>
-        <text class="td">{{item.profitText}}</text>
-        <text class="td">{{item.text}}</text>
+        <view class="td">{{item.label}}</view>
+        <view class="td">{{item.salesText}}</view>
+        <view class="td">{{item.profitText}}</view>
+        <view class="td col-store">{{item.text}}</view>
       </view>
     </view>
   </view>

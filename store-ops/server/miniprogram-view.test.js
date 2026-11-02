@@ -315,6 +315,12 @@ test("小程序页面文件能通过语法检查，并且每页都有 wxml", () 
   assert.doesNotMatch(dataBlock, /\bapp\b/);
   const shell = session.slice(session.indexOf("shell(snapshot)"), session.indexOf("rememberStore"));
   assert.match(shell, /pages:\s*view\.pagesFor\(app\.globalData\.role\)/);
+  const chromeWxml = readFileSync(path.join(root, "components/chrome/chrome.wxml"), "utf8");
+  assert.match(chromeWxml, /<view class="nav">/);
+  assert.doesNotMatch(chromeWxml, /scroll-view[^>]*class="nav"/);
+  const sheet = readFileSync(path.join(root, "app.wxss"), "utf8");
+  assert.match(sheet, /\.tr \{[^}]*flex-wrap:\s*wrap;/s);
+  assert.doesNotMatch(sheet, /min-width:\s*1800rpx/);
   const chrome = readFileSync(path.join(root, "components/chrome/chrome.wxss"), "utf8");
   assert.match(chrome, /\.nav \.chip \{[^}]*font-weight: 700;[^}]*color: #1a56c4;/s);
   assert.match(chrome, /\.nav \.chip\.on \{[^}]*color: #ffffff;/s);
