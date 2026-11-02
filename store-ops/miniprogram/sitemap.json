@@ -1,0 +1,4 @@
+{
+  "desc": "MaxMara经营管理演示",
+  "rules": [{ "action": "allow", "page": "*" }]
+}

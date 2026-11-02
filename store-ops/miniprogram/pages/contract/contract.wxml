@@ -1,0 +1,35 @@
+<view class="pad">
+  <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" show-filter="{{false}}" show-months="{{false}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:base="onBase" />
+  <view class="h2">1–4　上传合同，复核，生成档案</view>
+  <view class="lede">拓展部按这个顺序办理：导入 Word 或 PDF，取出文字，再提取关键字，人工确认后才生成店铺档案。数据写入同一份 Access。</view>
+  <view class="row">
+    <text class="{{imported ? 'done' : ''}}">导入合同</text>
+    <text class="{{imported ? 'done' : ''}}">导入结果</text>
+    <text class="{{draft ? 'done' : ''}}">提取关键字</text>
+    <text class="{{draft ? '' : ''}}">人工确认</text>
+  </view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
+  <view class="panel">
+    <view class="row">
+      <button class="btn" disabled="{{!canWrite || busy}}" bindtap="chooseFile">导入合同</button>
+      <button class="ghost" data-sample="docx" disabled="{{!canWrite || busy}}" bindtap="importSample">导入示例 Word</button>
+      <button class="ghost" data-sample="pdf" disabled="{{!canWrite || busy}}" bindtap="importSample">导入示例 PDF</button>
+    </view>
+    <view wx:if="{{!canWrite}}" class="meta">这一步由拓展部提交。请先切换身份。</view>
+  </view>
+  <view wx:if="{{imported}}" class="panel">
+    <view class="h2">导入结果</view>
+    <view class="meta">{{imported.filename}} · {{imported.reader}} · 原件在 {{imported.cabinet}}/{{imported.storedAs}}</view>
+    <textarea wx:if="{{imported.text}}" class="area" value="{{imported.text}}" bindinput="onText" />
+    <view wx:else class="lede">这份文件没有文字层。接上识别之后，才能在这里看到结果。</view>
+    <button class="btn" disabled="{{!canWrite || busy || !imported.text}}" bindtap="extract">提取关键字</button>
+  </view>
+  <view wx:if="{{draft}}" class="panel">
+    <view class="h2">关键字 · 请人工确认 · 置信度 {{draft.confidenceText}}</view>
+    <view wx:for="{{edits}}" wx:key="field_name" class="field">
+      <text class="lab">{{item.label}}<text wx:if="{{item.needs_review}}">　待复核</text></text>
+      <view class="field-box"><input class="input" value="{{item.value}}" data-name="{{item.field_name}}" bindinput="onEdit" /></view>
+    </view>
+    <button class="btn" disabled="{{!canWrite || busy}}" bindtap="confirm">确认并生成店铺档案</button>
+  </view>
+</view>

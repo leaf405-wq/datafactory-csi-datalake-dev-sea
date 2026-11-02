@@ -1,0 +1,22 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/stores/stores",
+    "pages/contract/contract",
+    "pages/journey/journey",
+    "pages/rent/rent",
+    "pages/forecast/forecast",
+    "pages/monitor/monitor",
+    "pages/cockpit/cockpit",
+    "pages/close/close"
+  ],
+  "window": {
+    "navigationBarTitleText": "MaxMara经营系统",
+    "navigationBarBackgroundColor": "#fffdf9",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f4efe8",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

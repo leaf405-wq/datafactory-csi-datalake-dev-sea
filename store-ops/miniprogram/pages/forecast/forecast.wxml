@@ -1,0 +1,39 @@
+<view class="pad">
+  <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" show-filter="{{false}}" show-months="{{false}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:base="onBase" />
+  <view class="h2">5.4 新开店铺盈利能力预测</view>
+  <view class="lede">立项时填预估日销、客单价、毛利率、租金模型和投入。系统按月结引擎算租金，再给出月度损益、静态回收期、盈亏平衡日销和年化 IRR。销售额下降 10%、20% 会各算一次。不写入 Access。</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
+  <view class="panel">
+    <view wx:for="{{fields}}" wx:key="key" class="field">
+      <text class="lab">{{item.label}}（{{item.unit}}）</text>
+      <view class="field-box"><input class="input" value="{{item.value}}" data-key="{{item.key}}" bindinput="setField" /></view>
+    </view>
+    <view class="field">
+      <text class="lab">租金模型</text>
+      <picker mode="selector" range="{{models}}" range-key="label" value="{{modelIndex}}" bindchange="onModel">
+        <view class="input">{{modelLabel}}</view>
+      </picker>
+    </view>
+    <button class="btn" disabled="{{busy}}" bindtap="calc">测算盈利能力</button>
+    <view wx:if="{{result}}">
+      <view class="kpis">
+        <view class="kpi"><text class="num">{{result.profitText}}</text><text class="meta">月净利润</text></view>
+        <view class="kpi"><text class="num">{{result.paybackText}}</text><text class="meta">静态投资回收期</text></view>
+        <view class="kpi"><text class="num">{{result.breakEvenText}}</text><text class="meta">盈亏平衡日均销售</text></view>
+        <view class="kpi"><text class="num">{{result.irrText}}</text><text class="meta">年化 IRR</text></view>
+      </view>
+      <view wx:for="{{result.lines}}" wx:key="name" class="tr">
+        <view class="td col-store">{{item.name}}</view>
+        <view class="td">{{item.value}}</view>
+      </view>
+      <view class="h2">敏感性</view>
+      <view class="tr"><view class="th td">情景</view><view class="th td">月销售</view><view class="th td">月净利润</view><view class="th td col-store">是否依然盈利</view></view>
+      <view class="tr" wx:for="{{result.sensitivity}}" wx:key="label">
+        <view class="td">{{item.label}}</view>
+        <view class="td">{{item.salesText}}</view>
+        <view class="td">{{item.profitText}}</view>
+        <view class="td col-store">{{item.text}}</view>
+      </view>
+    </view>
+  </view>
+</view>

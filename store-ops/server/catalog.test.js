@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { CATALOG, catalogSummary } from "./catalog.js";
+
+test("大陆 Max Mara 样本覆盖附件里的店，一共 53 家", () => {
+  const summary = catalogSummary();
+  assert.equal(summary.stores, 53);
+  assert.equal(new Set(CATALOG.map((item) => item.code)).size, 53);
+  assert.equal(new Set(CATALOG.map((item) => item.name)).size, 53);
+  assert.equal(summary.fromSheet, 4);
+  assert.ok(summary.cities >= 30 && summary.cities <= 40);
+  const byName = new Map(CATALOG.map((item) => [item.name, item]));
+  assert.equal(byName.get("北京国贸店").phone, "010-65055158");
+  assert.equal(byName.get("北京金融街店").phone, "010-66290830");
+  assert.equal(byName.get("杭州大厦店").phone, "0571-85381719");
+  assert.equal(byName.get("杭州万象城店").phone, "0571-89705872");
+  assert.equal(byName.get("北京三里屯太古里精品店").store_type, "旗舰店");
+  assert.equal(byName.get("北京三里屯太古里精品店").hours, "10:00-22:00");
+  assert.match(byName.get("北京三里屯太古里精品店").address, /N3-13/);
+  assert.equal(byName.get("北京东方广场店").phone, "010-85186841");
+  assert.equal(byName.get("上海前滩太古里店").phone, "");
+  assert.match(byName.get("成都太古里店").address, /中纱帽街8号/);
+  assert.equal(byName.get("成都太古里店").hours, "10:00-22:00");
+  assert.equal(byName.get("广州太古汇店").address.includes("天河路383号"), true);
+  assert.equal(byName.get("上海兴业太古汇店").flow, "keep");
+  assert.equal(byName.get("海口美兰机场店").store_type, "机场店");
+  assert.equal(byName.get("上海后滩太古里店").open_month, 11);
+  assert.equal(byName.get("上海后滩太古里店").open_year, 2026);
+  assert.equal(byName.get("上海后滩太古里店").listed_from, "新签");
+});

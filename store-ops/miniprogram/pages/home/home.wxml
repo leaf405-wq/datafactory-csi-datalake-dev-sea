@@ -1,0 +1,37 @@
+<view class="pad">
+  <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" query="{{query}}" show-filter="{{true}}" show-months="{{true}}" count-text="{{countText}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:month="onMonth" bind:query="onQuery" bind:base="onBase" />
+  <view class="h2">从签约到收账，按泳道往下走</view>
+  <view class="lede">拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。3 月到 8 月全部走完，显示绿色「已完成13步泳道」。9 月和上月各有 3 家店停在第 10、11、12 步，红色预警是 3。当月从第 5 步开始。上海后滩太古里店是 2026 年 11 月新签，之前的月份不出现。</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
+  <view wx:if="{{loading}}" class="meta">正在打开 Access 数据库</view>
+  <view class="kpis">
+    <view class="kpi"><text class="num">{{registered}}</text><text class="meta">在册店铺</text></view>
+    <view class="kpi"><text class="num">{{payableText}}</text><text class="meta">{{payableLabel}}</text></view>
+    <view class="kpi"><text class="num">{{reds}}</text><text class="meta">红色预警</text></view>
+    <view class="kpi"><text class="num">{{diffs}}</text><text class="meta">未对齐的对账</text></view>
+  </view>
+  <view class="panel">
+    <view class="h2">红色预警</view>
+    <view wx:if="{{queueEmpty}}" class="meta">这个月没有未完成的泳道。</view>
+    <view wx:for="{{queue}}" wx:key="id" class="queue" data-id="{{item.storeId}}" bindtap="openLane">
+      <text class="link">{{item.name}}</text>
+      <text class="tag red">泳道</text>
+      <text class="meta">{{item.message}}</text>
+    </view>
+  </view>
+  <view wx:for="{{cards}}" wx:key="id" class="card">
+    <text class="tag">{{item.tag}}</text>
+    <view class="name link" data-id="{{item.id}}" bindtap="openLane">{{item.name}}</view>
+    <view class="meta">{{item.meta}}</view>
+    <view wx:if="{{item.address}}" class="meta">{{item.address}}</view>
+    <view wx:if="{{item.lane.done}}" class="done">已完成13步泳道</view>
+    <block wx:else>
+      <view class="rail">
+        <text wx:for="{{item.lane.cells}}" wx:for-item="cell" wx:key="n" class="dot" style="color:{{cell.fg}};background:{{cell.bg}};border-color:{{cell.color}};font-weight:{{cell.now ? 700 : 400}}">{{cell.n}}</text>
+      </view>
+      <view class="meta">{{item.lane.text}}</view>
+      <view wx:if="{{item.lane.alert}}" class="alert">红色预警</view>
+    </block>
+    <view class="link" data-id="{{item.id}}" bindtap="openLane">该选中月份泳道</view>
+  </view>
+</view>

@@ -1,0 +1,58 @@
+<view class="pad">
+  <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" query="{{query}}" show-filter="{{true}}" show-months="{{true}}" count-text="{{countText}}" filter-placeholder="按区域、城市、店名、商场、电话筛选" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:month="onMonth" bind:query="onQuery" bind:base="onBase" />
+  <view class="h2">5.8 多维报表与管理驾驶舱</view>
+  <view class="lede">给区域经理、财务、营运总监、拓展和高管看同一套账期的数。区域和城市合在一列，利润按销售额加权。页面默认停在上月。</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
+  <view class="h2">区域 / 城市</view>
+  <view class="meta">平均加权利润 = Σ(店铺净利润 × 店铺销售额) / Σ销售额。加权净利润 = Σ店铺净利润。毛利仍按销售额的 55% 估算。</view>
+  <view class="kpis">
+    <view class="kpi"><text class="num">{{regions}} / {{cities}}</text><text class="meta">区域 / 城市</text></view>
+    <view class="kpi"><text class="num">{{avgText}}</text><text class="meta">平均加权利润</text></view>
+    <view class="kpi"><text class="num">{{netText}}</text><text class="meta">加权净利润</text></view>
+  </view>
+  <view wx:if="{{geoEmpty}}" class="meta">这个月还没有销售。结账数字看上月。</view>
+  <view class="panel" wx:for="{{geo}}" wx:key="label">
+    <view>{{item.label}}</view>
+    <view class="meta">{{item.stores}} 家 · 销售 {{item.salesText}}</view>
+    <view class="meta">平均加权利润 {{item.avgText}} · 加权净利润 {{item.netText}}</view>
+  </view>
+  <view class="h2">单店损益表</view>
+  <view class="meta">{{marginNote}}</view>
+  <view class="panel" wx:for="{{pl}}" wx:key="storeId">
+    <view>{{item.name}}</view>
+    <view class="meta">收入 {{item.salesText}} · 毛利 {{item.grossText}} · 租金 {{item.rentText}}</view>
+    <view class="meta">净利润 {{item.profitText}} · 净利率 {{item.marginText}}</view>
+  </view>
+  <view class="h2">店铺健康度排行榜</view>
+  <view class="meta">红榜是综合分最高的前 20%，而且综合分至少 50。黑榜是综合分最低的后 20%，不看分数线。人效不计入。</view>
+  <view class="panel" wx:for="{{ranking}}" wx:key="storeId">
+    <text wx:if="{{item.board}}" class="tag {{item.boardClass}}">{{item.board}}</text>
+    <text wx:else class="meta">—</text>
+    <view>{{item.name}} · {{item.score}}</view>
+    <view class="meta">销售 {{item.salesText}} · 利润 {{item.profitText}} · 坪效 {{item.areaText}} · 人效 —</view>
+  </view>
+  <view class="h2">租金成本占比</view>
+  <view class="meta">{{historyNote}} 占比 = 不含税租金 / 销售额。</view>
+  <view wx:for="{{mallBars}}" wx:key="name" class="panel">
+    <view>{{item.name}} {{item.ratioText}}</view>
+    <view class="bar-track"><view class="bar" style="width:{{item.width}}"></view></view>
+  </view>
+  <view wx:for="{{regionBars}}" wx:key="name" class="panel">
+    <view>{{item.name}} {{item.ratioText}}</view>
+    <view class="bar-track"><view class="bar" style="width:{{item.width}}"></view></view>
+  </view>
+  <view class="h2">闭店 / 续租决策评估</view>
+  <view class="meta">到期前 6 个月才自动标出。违约金按 3 个月固定租金估算。新签店开业后的前 6 个月不出现。</view>
+  <view class="panel" wx:for="{{lease}}" wx:key="storeId">
+    <view>{{item.name}}</view>
+    <view class="meta">租约结束 {{item.leaseEnd}} · 剩余 {{item.monthsLeft}} 个月 · 违约金 {{item.penaltyText}}</view>
+    <view class="meta">当月利润 {{item.profitText}}</view>
+    <view>{{item.advice}}</view>
+  </view>
+  <view class="h2">商场贡献度</view>
+  <view class="meta">商场总销售未知，所以不能算我方在该商场的销售占比。</view>
+  <view class="panel" wx:for="{{mallBars}}" wx:key="name">
+    <view>{{item.name}}</view>
+    <view class="meta">我方销售 {{item.salesText}} · 我方应付租金 {{item.payableText}} · 商场总销售 未知</view>
+  </view>
+</view>

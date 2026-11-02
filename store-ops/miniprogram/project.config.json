@@ -1,0 +1,25 @@
+{
+  "description": "MaxMara经营管理。功能与网站一致，数据走本机 Access。",
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "useApiHostProcess": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "compileType": "miniprogram",
+  "appid": "touristappid",
+  "projectname": "maxmara-store-ops",
+  "libVersion": "3.4.0",
+  "condition": {}
+}

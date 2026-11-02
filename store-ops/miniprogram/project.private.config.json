@@ -1,0 +1,13 @@
+{
+  "projectname": "maxmara-store-ops",
+  "setting": {
+    "urlCheck": false,
+    "useApiHostProcess": false,
+    "compileHotReLoad": true,
+    "coverView": true,
+    "skylineRenderEnable": false,
+    "lazyloadPlaceholderEnable": false
+  },
+  "libVersion": "3.4.0",
+  "description": "本机预览。不校验合法域名。接口 http://127.0.0.1:3780"
+}
