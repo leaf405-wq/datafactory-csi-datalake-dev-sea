@@ -45,7 +45,7 @@ store-ops/server/
 store-ops/data/storeops.accdb
 ```
 
-已经克隆过时，在仓库根目录执行 `git pull origin cursor/store-ops-web-0eb9`，再进入 `store-ops` 重新 `npm run dev`。5173 或 3780 被占用时，先在原来的终端按 Ctrl+C 停掉上一次的 `npm run dev`。用 Microsoft Access 打开 `storeops.accdb` 之前也要先停掉它，避免文件被占用。
+已经克隆过时，在仓库根目录执行 `git pull origin cursor/store-ops-web-0eb9`，再进入 `store-ops` 重新 `npm run dev`。3780、5173 或 9091 被占用时，先在原来的终端按 Ctrl+C 停掉上一次的 `npm run dev`。那个终端已经关掉时，在 `store-ops` 目录执行 `lsof -tiTCP:3780 -tiTCP:5173 -tiTCP:9091 | xargs kill`，然后再执行 `npm run dev`。用 Microsoft Access 打开 `storeops.accdb` 之前也要先停掉它，避免文件被占用。
 
 
 ## 微信小程序

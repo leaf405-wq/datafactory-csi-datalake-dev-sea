@@ -1,11 +1,22 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { mirrorIpv6 } from "./loopback.js";
+import { busyPortMessage, busyPorts, mirrorIpv6 } from "./loopback.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const children = [];
+const devPorts = [
+  Number(process.env.PORT || 3780),
+  5173,
+  Number(process.env.ACCESS_PORT || 9091),
+];
+
+const taken = await busyPorts(devPorts);
+if (taken.length) {
+  console.error(busyPortMessage(taken));
+  process.exit(1);
+}
 
 function start(command, args) {
   const child = spawn(command, args, {

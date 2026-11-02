@@ -43,6 +43,41 @@ export async function listenHttp(handler, port) {
   return servers;
 }
 
+export function portBusy(port, host = "127.0.0.1") {
+  return new Promise((resolve) => {
+    const socket = net.connect({ port, host });
+    let settled = false;
+    const finish = (busy) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(busy);
+    };
+    socket.setTimeout(400);
+    socket.once("connect", () => finish(true));
+    socket.once("timeout", () => finish(false));
+    socket.once("error", () => finish(false));
+  });
+}
+
+export async function busyPorts(ports) {
+  const found = await Promise.all(ports.map(async (port) => ((await portBusy(port)) ? port : null)));
+  return found.filter((port) => port != null);
+}
+
+export function busyPortMessage(ports) {
+  const list = ports.join("、");
+  const flags = ports.map((port) => `-tiTCP:${port}`).join(" ");
+  return [
+    `端口 ${list} 仍被上一次的开发服务占用。`,
+    "先到原来的终端按 Ctrl+C 停掉 npm run dev。",
+    "如果那个终端已经关了，在 store-ops 目录执行：",
+    `lsof ${flags} | xargs kill`,
+    "然后再执行 npm run dev。",
+    "旧服务还在时，页面仍然是 http://127.0.0.1:3780/ 。",
+  ].join("\n");
+}
+
 export function mirrorIpv6(port) {
   const server = net.createServer((client) => {
     const upstream = net.connect({ port, host: "127.0.0.1" });

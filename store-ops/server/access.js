@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { busyPortMessage, portBusy } from "./loopback.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -19,9 +20,20 @@ export function accessFile() {
   return path.join(root, "data", "storeops.accdb");
 }
 
+export function accessBootFailure(stderr, exitCode) {
+  if (/Address already in use|BindException/.test(String(stderr || ""))) {
+    return Object.assign(new Error(busyPortMessage([port])), { code: "EADDRINUSE" });
+  }
+  if (exitCode) return new Error(`Access 数据库进程退出，代码 ${exitCode}。`);
+  return null;
+}
+
 export async function startAccess() {
   const classpath = [...jars, classes].join(path.delimiter);
   let bootError = null;
+  let readyLine = false;
+  let stderr = "";
+  let suppressStderr = false;
   child = spawn(
     "java",
     ["-cp", classpath, "com.storeops.AccessServer", accessFile(), String(port)],
@@ -32,9 +44,34 @@ export async function startAccess() {
       ? new Error("找不到 java。请安装 JDK 17 或以上，并确认 java 命令在 PATH 里。")
       : err;
   });
-  child.stdout.on("data", (chunk) => process.stdout.write(`[access] ${chunk}`));
-  child.stderr.on("data", (chunk) => process.stderr.write(`[access] ${chunk}`));
-  await waitForReady(() => bootError);
+  child.stdout.on("data", (chunk) => {
+    const text = chunk.toString();
+    if (text.includes("ACCESS_READY")) readyLine = true;
+    process.stdout.write(`[access] ${text}`);
+  });
+  child.stderr.on("data", (chunk) => {
+    if (suppressStderr) return;
+    stderr += chunk.toString();
+    const failure = accessBootFailure(stderr, 0);
+    if (failure) {
+      suppressStderr = true;
+      stderr = "";
+      bootError = failure;
+    }
+  });
+  child.on("close", (code) => {
+    if (bootError) return;
+    const failure = accessBootFailure(stderr, code);
+    if (failure) bootError = failure;
+  });
+  try {
+    await waitForReady(() => bootError, () => readyLine);
+  } catch (error) {
+    if (stderr) process.stderr.write(`[access] ${stderr}`);
+    if (child && !child.killed) child.kill();
+    throw error;
+  }
+  if (stderr) process.stderr.write(`[access] ${stderr}`);
   return accessFile();
 }
 
@@ -42,20 +79,25 @@ export async function stopAccess() {
   if (child && !child.killed) child.kill();
 }
 
-async function waitForReady(readError) {
+async function waitForReady(readError, isReady) {
   const started = Date.now();
   while (Date.now() - started < 8000) {
     const failed = readError();
     if (failed) throw failed;
-    try {
-      const response = await fetch(`http://127.0.0.1:${port}/health`);
-      if (response.ok) return;
-    } catch {
-      // process still booting
+    if (isReady()) {
+      try {
+        const response = await fetch(`http://127.0.0.1:${port}/health`);
+        if (response.ok) return;
+      } catch {
+        // process still booting
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
-  throw new Error("Microsoft Access 数据库进程没有在 8 秒内启动。请确认已安装 Java，并且 9091 端口没有被占用。");
+  if (await portBusy(port)) {
+    throw Object.assign(new Error(busyPortMessage([port])), { code: "EADDRINUSE" });
+  }
+  throw new Error("Microsoft Access 数据库进程没有在 8 秒内启动。请确认已安装 Java。");
 }
 
 export async function db(op) {

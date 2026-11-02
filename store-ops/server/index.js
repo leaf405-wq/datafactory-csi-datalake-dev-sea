@@ -1,7 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { lanHosts, listenHttp } from "./loopback.js";
+import { busyPortMessage, busyPorts, lanHosts, listenHttp } from "./loopback.js";
 import { all, startAccess, stopAccess } from "./access.js";
 import { SAMPLE_CONTRACT } from "./parser.js";
 import { seedIfEmpty } from "./seed.js";
@@ -145,7 +145,19 @@ app.post("/api/stores/:id/decision", wrap(async (req) => setDecision({
 attachFrontDoor(app, { distDir: path.resolve(__dirname, "../client/dist") });
 
 const port = Number(process.env.PORT || 3780);
-await startAccess();
+const accessPort = Number(process.env.ACCESS_PORT || 9091);
+const taken = await busyPorts([port, accessPort]);
+if (taken.length) {
+  console.error(busyPortMessage(taken));
+  process.exit(1);
+}
+try {
+  await startAccess();
+} catch (error) {
+  if (error.code !== "EADDRINUSE") throw error;
+  console.error(error.message);
+  process.exit(1);
+}
 if ((await all("stores")).length === 0) await seedIfEmpty();
 const catalog = await ensureCatalog();
 const photos = await ensurePhotos();
@@ -157,7 +169,15 @@ console.log(`photos ${photos.photos} added ${photos.added} linked ${photos.linke
 console.log(`close months ${close.months.map((item) => item.month).join("/")} added ${close.added}`);
 console.log(`opening lane ${opening.year}-${opening.month} added ${opening.added}`);
 console.log(`ready lanes parked ${ready.parked} applied ${ready.applied}`);
-const servers = await listenHttp(app, port);
+let servers;
+try {
+  servers = await listenHttp(app, port);
+} catch (error) {
+  await stopAccess();
+  if (error.code !== "EADDRINUSE") throw error;
+  console.error(busyPortMessage([port]));
+  process.exit(1);
+}
 console.log(`store-ops http://127.0.0.1:${port}`);
 const lan = lanHosts();
 if (lan.length) console.log(`局域网 ${lan.map((host) => `http://${host}:${port}`).join(" ")}`);
