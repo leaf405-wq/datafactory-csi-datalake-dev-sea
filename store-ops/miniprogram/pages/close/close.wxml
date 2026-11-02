@@ -1,0 +1,27 @@
+<view class="pad">
+  <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" show-filter="{{false}}" show-months="{{true}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:month="onMonth" bind:base="onBase" />
+  <view class="h2">闭店</view>
+  <view class="lede">只有高管可以闭店。最近 6 个月每个月都是红色或黄色时，才能把这家店标成「失效-闭店」。闭店后卡片变成灰色，并且退出经营首页、店览、每日预警和管理驾驶舱的统计。点灰色卡片上的「恢复门店」，会回到经营首页原来的店铺卡片，颜色恢复。</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
+  <view class="meta">可闭店 {{readyCount}} 家，已闭店 {{closedCount}} 家。</view>
+  <view wx:if="{{empty}}" class="meta">还没有店铺连续 6 个月处在红色或黄色。</view>
+  <view wx:for="{{cards}}" wx:key="id" class="card {{item.closed ? 'closed' : ''}}">
+    <text class="tag">{{item.tag}}</text>
+    <view class="name">{{item.name}}</view>
+    <view class="meta">{{item.meta}}</view>
+    <view wx:if="{{item.address}}" class="meta">{{item.address}}</view>
+    <view wx:if="{{item.lane.done}}" class="done">已完成13步泳道</view>
+    <block wx:else>
+      <view class="rail">
+        <text wx:for="{{item.lane.cells}}" wx:for-item="cell" wx:key="n" class="dot" style="color:{{cell.fg}};background:{{cell.bg}};border-color:{{cell.color}}">{{cell.n}}</text>
+      </view>
+      <view class="meta">{{item.lane.text}}</view>
+      <view wx:if="{{item.lane.alert}}" class="alert">红色预警</view>
+    </block>
+    <view class="meta">{{item.reason}}</view>
+    <view class="row">
+      <text wx:for="{{item.colors}}" wx:for-item="color" wx:key="key" class="tag {{color.signal}}">{{color.label}}</text>
+    </view>
+    <button class="btn" data-id="{{item.id}}" data-closed="{{item.closed}}" bindtap="onAct">{{item.action}}</button>
+  </view>
+</view>

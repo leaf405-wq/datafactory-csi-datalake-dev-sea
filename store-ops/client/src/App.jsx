@@ -46,6 +46,10 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (role !== "executive" && page === "close") setPage("home");
+  }, [role, page]);
+
+  useEffect(() => {
     let stop = false;
     let timer;
     async function tick() {
@@ -129,6 +133,9 @@ export default function App() {
           <button className={page === "forecast" ? "active" : "ghost"} onClick={() => setPage("forecast")}>盈利预测</button>
           <button className={page === "monitor" ? "active" : "ghost"} onClick={() => setPage("monitor")}>每日预警</button>
           <button className={page === "cockpit" ? "active" : "ghost"} onClick={() => setPage("cockpit")}>管理驾驶舱</button>
+          {role === "executive" ? (
+            <button id="nav-close" className={page === "close" ? "active" : "ghost"} onClick={() => setPage("close")}>闭店</button>
+          ) : null}
           <p className="meta" style={{ marginTop: 18 }}>
             当前身份 {actor}。泳道里的每一步只接受对应部门的操作，顺序不能跳。
           </p>
@@ -153,6 +160,9 @@ export default function App() {
           ) : null}
           {data && page === "cockpit" ? (
             <CockpitPage api={api} period={viewed} months={months} accounting={accounting} calendar={calendar} onPeriod={setPeriod} MonthHistory={MonthHistory} />
+          ) : null}
+          {data && page === "close" && role === "executive" ? (
+            <ClosePage data={data} period={viewed} api={api} onRun={run} busyId={busyId} />
           ) : null}
         </main>
       </div>
@@ -182,6 +192,14 @@ function SidePhoto({ data, storeId }) {
       </figcaption>
     </figure>
   );
+}
+
+function isClosedStore(store) {
+  return store?.status === "失效-闭店";
+}
+
+function listedStores(stores) {
+  return stores.filter((store) => !isClosedStore(store));
 }
 
 function inMonth(row, period) {
@@ -302,13 +320,68 @@ function RedQueue({ data, period, stores, onOpen }) {
   );
 }
 
+function ClosePage({ data, period, api, onRun, busyId }) {
+  const reports = new Map((data.closure || []).map((item) => [item.storeId, item]));
+  const cards = data.stores.map((store) => {
+    const report = reports.get(store.id) || { allowed: false, closed: isClosedStore(store), reason: "最近 6 个月里有 0 个月是红色或黄色，还不能闭店。" };
+    const closed = isClosedStore(store);
+    if (!closed && !report.allowed) return null;
+    return { store, report, closed };
+  }).filter(Boolean);
+  return (
+    <section id="page-close">
+      <h2>闭店</h2>
+      <p className="lede">
+        只有高管可以闭店。最近 6 个月每个月都是红色或黄色时，才能把这家店标成「失效-闭店」。闭店后卡片变成灰色，并且退出经营首页、店览、每日预警和管理驾驶舱的统计。点灰色卡片上的「恢复门店」，会回到经营首页原来的店铺卡片，颜色恢复。
+      </p>
+      <p className="meta">可闭店 {cards.filter((item) => !item.closed).length} 家，已闭店 {cards.filter((item) => item.closed).length} 家。</p>
+      {cards.length === 0 ? <p className="meta">还没有店铺连续 6 个月处在红色或黄色。</p> : null}
+      <div className="grid">
+        {cards.map(({ store, report, closed }) => (
+          <article className={closed ? "card closed" : "card"} key={store.id}>
+            <span className="tag">{closed ? "失效-闭店" : `${store.region} · ${store.city}`}</span>
+            <h3>{store.name}</h3>
+            <p className="meta">{store.store_type || "精品店"} · {store.mall_name} · {store.keep_decision || "待评估"}</p>
+            {store.address ? <p className="meta">{store.address}</p> : null}
+            <LaneStatus step={laneStep(data, store.id, period)} unfinished={!closed && laneUnfinished(data, store.id, period)} />
+            <p className="meta">{report.reason}</p>
+            <div className="month-colors">
+              {(report.colors || []).map((item) => (
+                <span key={`${item.year}-${item.month}`} className={`tag ${item.signal || ""}`}>
+                  {item.month}月{item.signal === "red" ? "红" : item.signal === "yellow" ? "黄" : "—"}
+                </span>
+              ))}
+            </div>
+            <Action id={`close-${store.id}`} busyId={busyId} pending={closed ? "正在恢复门店" : "正在闭店"}>
+              <button
+                id={`close-${store.id}`}
+                type="button"
+                className={closed ? "ghost" : ""}
+                disabled={Boolean(busyId)}
+                onClick={() => onRun(
+                  () => (closed ? api.reopenStore(store.id) : api.closeStore(store.id)),
+                  `close-${store.id}`,
+                )}
+              >
+                {closed ? "恢复门店" : "闭店"}
+              </button>
+            </Action>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, onPreview }) {
   const [query, setQuery] = useState("");
-  const roster = data.stores.filter((store) => operatingIn(store, period));
+  const listed = listedStores(data.stores);
+  const listedIds = new Set(listed.map((store) => store.id));
+  const roster = listed.filter((store) => operatingIn(store, period));
   const shown = roster.filter((store) => matchesStore(store, query));
-  const payable = data.bills.filter((bill) => inMonth(bill, period)).reduce((sum, bill) => sum + Number(bill.payable || 0), 0);
-  const reds = data.alerts.filter((alert) => alert.level === "red" && alert.dimension === "泳道" && inMonth(alert, period)).length;
-  const diffs = data.reconciliations.filter((row) => row.status === "DIFFERENCE" && inMonth(row, period)).length;
+  const payable = data.bills.filter((bill) => listedIds.has(bill.store_id) && inMonth(bill, period)).reduce((sum, bill) => sum + Number(bill.payable || 0), 0);
+  const reds = data.alerts.filter((alert) => listedIds.has(alert.store_id) && alert.level === "red" && alert.dimension === "泳道" && inMonth(alert, period)).length;
+  const diffs = data.reconciliations.filter((row) => listedIds.has(row.store_id) && row.status === "DIFFERENCE" && inMonth(row, period)).length;
   return (
     <>
       <h2>从签约到收账，按泳道往下走</h2>
@@ -316,14 +389,14 @@ function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, on
         拓展上传合同，系统抽出条款并等人复核，然后生成店铺和租金规则。营运补上活动，系统用 DW 销售按流程图算出应付租金和预警。财务收下商场账单，对出差异，再生成付款申请。数据写在 Microsoft Access 文件里。3 月到 8 月全部走完，显示绿色「已完成13步泳道」。9 月和上月各有 3 家店停在第 10、11、12 步，红色预警是 3。当月从第 5 步开始。上海后滩太古里店是 2026 年 11 月新签，之前的月份不出现。
       </p>
       <div className="kpis">
-        <div className="kpi"><strong>{data.stores.length}</strong><span>在册店铺</span></div>
+        <div className="kpi"><strong>{listed.length}</strong><span>在册店铺</span></div>
         <div className="kpi"><strong>{money(payable)}</strong><span>{sameMonth(period, accounting) ? "上月" : `${period.month}月`}系统应付租金</span></div>
         <div className="kpi"><strong>{reds}</strong><span>红色预警</span></div>
         <div className="kpi"><strong>{diffs}</strong><span>未对齐的对账</span></div>
       </div>
       <div className="row">
         <input id="home-filter" value={query} placeholder={FILTER_PLACEHOLDER} onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
-        <span className="meta">显示 {shown.length} / {data.stores.length} 家</span>
+        <span className="meta">显示 {shown.length} / {listed.length} 家</span>
         <MonthHistory months={months} selected={period} accounting={accounting} calendar={calendar} onPeriod={onPeriod} />
       </div>
       <RedQueue data={data} period={period} stores={shown} onOpen={onOpen} />
@@ -348,7 +421,8 @@ function Home({ data, period, months, accounting, calendar, onPeriod, onOpen, on
 
 function Stores({ data, period, months, accounting, calendar, onPeriod, role, onOpen, onPreview, onRun, api, busyId }) {
   const [query, setQuery] = useState("");
-  const roster = data.stores.filter((store) => operatingIn(store, period));
+  const listed = listedStores(data.stores);
+  const roster = listed.filter((store) => operatingIn(store, period));
   const shown = roster.filter((store) => matchesStore(store, query));
   return (
     <>
@@ -358,7 +432,7 @@ function Stores({ data, period, months, accounting, calendar, onPeriod, role, on
       </p>
       <div className="row">
         <input id="store-filter" value={query} placeholder={FILTER_PLACEHOLDER} onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 320 }} />
-        <span className="meta">显示 {shown.length} / {data.stores.length} 家</span>
+        <span className="meta">显示 {shown.length} / {listed.length} 家</span>
         <MonthHistory months={months} selected={period} accounting={accounting} calendar={calendar} onPeriod={onPeriod} />
       </div>
       <div className="panel" style={{ overflowX: "auto" }}>

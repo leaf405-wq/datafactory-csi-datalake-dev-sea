@@ -19,6 +19,13 @@ page {
   margin-bottom: 16rpx;
 }
 .card .name { font-size: 32rpx; font-weight: 600; }
+.card.closed { background: #eceae8; border-color: #d9d4cf; color: #8d8680; }
+.card.closed .tag,
+.card.closed .link,
+.card.closed .name,
+.card.closed .meta,
+.card.closed .done,
+.card.closed .alert { color: #8d8680; background: transparent; }
 .link { color: #8c3f1c; }
 .done { color: #1d6b45; font-weight: 700; }
 .alert { color: #9d2c2c; font-weight: 700; }

@@ -9,6 +9,8 @@ import {
   inRentFreePeriod,
 } from "./rentEngine.js";
 import { accountingPeriod, calendarMonth } from "../client/src/period.js";
+import { ASSUMED_MARGIN, diagnosePrd } from "./prd.js";
+import { CLOSED_STATUS, evaluateClosure, isClosed, signalsFromBills } from "./closure.js";
 
 export const PERIOD = accountingPeriod();
 export const ROLE_LABEL = {
@@ -144,7 +146,25 @@ export async function snapshot() {
     payments,
     journey,
     audit: auditLog.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 40),
+    closure: buildClosureReport(stores, bills, contracts, PERIOD),
   };
+}
+
+function contractFor(contracts, storeId) {
+  const rows = (contracts || []).filter((item) => item.store_id === storeId);
+  return rows.find((item) => item.status === "EFFECTIVE") || rows[0] || null;
+}
+
+export function buildClosureReport(stores, bills, contracts, through) {
+  return (stores || []).map((store) => {
+    const mine = (bills || []).filter((bill) => bill.store_id === store.id);
+    const signals = signalsFromBills(mine, contractFor(contracts, store.id), through, diagnosePrd, ASSUMED_MARGIN);
+    return {
+      storeId: store.id,
+      closed: isClosed(store),
+      ...evaluateClosure(signals, through),
+    };
+  });
 }
 
 export async function importContract({ role, actor, filename, contentBase64, sample }) {
@@ -510,6 +530,30 @@ export async function setDecision({ role, actor, storeId, keepDecision, actionPl
   await update("stores", storeId, { keep_decision: keepDecision, action_plan: actionPlan || "" });
   await audit(actor, role, "更新续租或关店动作", `${storeId} ${keepDecision}`);
   return { keepDecision };
+}
+
+export async function closeStore({ role, actor, storeId }) {
+  assertRole(role, ["executive"]);
+  const [stores, bills, contracts] = await Promise.all([all("stores"), all("rent_bills"), all("contracts")]);
+  const store = stores.find((item) => item.id === storeId);
+  if (!store) throw new ApiError(404, "没有这家店");
+  if (isClosed(store)) throw new ApiError(409, "这家店已经是失效-闭店。");
+  const report = buildClosureReport([store], bills, contracts, PERIOD)[0];
+  if (!report.allowed) throw new ApiError(400, report.reason);
+  await update("stores", storeId, { status: CLOSED_STATUS });
+  await audit(actor, role, "闭店", `${store.name} 失效-闭店`);
+  return { status: CLOSED_STATUS };
+}
+
+export async function reopenStore({ role, actor, storeId }) {
+  assertRole(role, ["executive"]);
+  const stores = await all("stores");
+  const store = stores.find((item) => item.id === storeId);
+  if (!store) throw new ApiError(404, "没有这家店");
+  if (!isClosed(store)) throw new ApiError(400, "这家店不是失效-闭店。");
+  await update("stores", storeId, { status: "NORMAL_OPERATION" });
+  await audit(actor, role, "恢复门店", store.name);
+  return { status: "NORMAL_OPERATION" };
 }
 
 function comparisonLines(bill, mall) {

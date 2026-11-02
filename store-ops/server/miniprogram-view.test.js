@@ -141,6 +141,38 @@ test("首页 10 月是 52/53 且红色预警只数泳道，11 月含后滩是 53
   assert.equal(allNovember.countText, "显示 53 / 53 家");
 });
 
+test("闭店只出现在高管菜单，失效店退出首页统计，恢复前是灰色卡片", () => {
+  assert.equal(view.pagesFor("ops").some((item) => item.id === "close"), false);
+  assert.equal(view.pagesFor("executive").length, 8);
+  assert.equal(view.pagesFor("executive")[7].label, "闭店");
+  const data = snapshot();
+  data.stores.find((item) => item.id === "st-0").status = "失效-闭店";
+  data.closure = [
+    { storeId: "st-0", allowed: false, closed: true, reason: "已经闭店。", colors: [] },
+    {
+      storeId: "st-1",
+      allowed: true,
+      closed: false,
+      reason: "已连续 6 个月为红色或黄色，可以闭店。",
+      colors: [{ year: 2026, month: 10, signal: "red" }],
+    },
+  ];
+  const october = view.homeModel(data, { year: 2026, month: 10 }, "");
+  assert.equal(october.countText, "显示 51 / 52 家");
+  assert.equal(october.cards.some((card) => card.id === "st-0"), false);
+  assert.equal(october.reds, 3);
+  const page = view.closeModel(data, { year: 2026, month: 10 });
+  assert.equal(page.closedCount, 1);
+  assert.equal(page.readyCount, 1);
+  const closed = page.cards.find((card) => card.id === "st-0");
+  assert.equal(closed.tag, "失效-闭店");
+  assert.equal(closed.action, "恢复门店");
+  assert.equal(closed.lane.done, true);
+  const ready = page.cards.find((card) => card.id === "st-1");
+  assert.equal(ready.action, "闭店");
+  assert.equal(ready.colors[0].label, "10月红");
+});
+
 test("月份标签把结账月标成上月，把日历月标成当月，选中 4 月打开 4 月", () => {
   const accounting = { year: 2026, month: 10 };
   const calendar = { year: 2026, month: 11 };

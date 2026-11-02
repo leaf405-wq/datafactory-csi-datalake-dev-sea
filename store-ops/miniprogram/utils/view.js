@@ -15,6 +15,19 @@ const PAGES = [
   { id: "cockpit", label: "管理驾驶舱" },
 ];
 
+function pagesFor(role) {
+  if (role === "executive") return PAGES.concat([{ id: "close", label: "闭店" }]);
+  return PAGES;
+}
+
+function isClosed(store) {
+  return store && store.status === "失效-闭店";
+}
+
+function listedStores(stores) {
+  return (stores || []).filter((store) => !isClosed(store));
+}
+
 const STEP_COLORS = [
   "#8c3f1c", "#1d6b45", "#1f4e79", "#8a5a00", "#6b3fa0",
   "#9d2c2c", "#0f6e6e", "#3d4c8a", "#a15c38", "#2f6f3e",
@@ -235,11 +248,14 @@ function buildContext(snapshot, selected) {
 }
 
 function homeModel(data, period, query) {
-  const roster = data.stores.filter((store) => operatingIn(store, period));
+  const listed = listedStores(data.stores);
+  const listedIds = {};
+  listed.forEach((store) => { listedIds[store.id] = true; });
+  const roster = listed.filter((store) => operatingIn(store, period));
   const shown = roster.filter((store) => matchesStore(store, query));
-  const payable = data.bills.filter((bill) => inMonth(bill, period)).reduce((sum, bill) => sum + Number(bill.payable || 0), 0);
-  const reds = data.alerts.filter((alert) => alert.level === "red" && alert.dimension === "泳道" && inMonth(alert, period)).length;
-  const diffs = data.reconciliations.filter((row) => row.status === "DIFFERENCE" && inMonth(row, period)).length;
+  const payable = data.bills.filter((bill) => listedIds[bill.store_id] && inMonth(bill, period)).reduce((sum, bill) => sum + Number(bill.payable || 0), 0);
+  const reds = data.alerts.filter((alert) => listedIds[alert.store_id] && alert.level === "red" && alert.dimension === "泳道" && inMonth(alert, period)).length;
+  const diffs = data.reconciliations.filter((row) => listedIds[row.store_id] && row.status === "DIFFERENCE" && inMonth(row, period)).length;
   const ids = new Set(shown.map((store) => store.id));
   const queue = data.alerts
     .filter((alert) => alert.level === "red" && alert.dimension === "泳道" && inMonth(alert, period) && ids.has(alert.store_id))
@@ -267,8 +283,8 @@ function homeModel(data, period, query) {
     payableLabel: sameMonth(period, data.period) ? "上月系统应付租金" : `${period.month}月系统应付租金`,
     reds,
     diffs,
-    registered: data.stores.length,
-    countText: `显示 ${shown.length} / ${data.stores.length} 家`,
+    registered: listed.length,
+    countText: `显示 ${shown.length} / ${listed.length} 家`,
     queue,
     queueEmpty: queue.length === 0,
     cards,
@@ -276,7 +292,8 @@ function homeModel(data, period, query) {
 }
 
 function storesModel(data, period, query, role) {
-  const roster = data.stores.filter((store) => operatingIn(store, period));
+  const listed = listedStores(data.stores);
+  const roster = listed.filter((store) => operatingIn(store, period));
   const shown = roster.filter((store) => matchesStore(store, query));
   const canDecide = role === "ops" || role === "executive";
   const rows = shown.map((store) => {
@@ -309,7 +326,7 @@ function storesModel(data, period, query, role) {
   return {
     rows,
     canDecide,
-    countText: `显示 ${shown.length} / ${data.stores.length} 家`,
+    countText: `显示 ${shown.length} / ${listed.length} 家`,
     salesHead: `${period.month}月销售`,
   };
 }
@@ -527,6 +544,49 @@ function cockpitModel(desk, period, query) {
   };
 }
 
+function closeModel(data, period) {
+  const reports = {};
+  (data.closure || []).forEach((item) => { reports[item.storeId] = item; });
+  const cards = [];
+  (data.stores || []).forEach((store) => {
+    const report = reports[store.id] || { allowed: false, reason: "最近 6 个月里有 0 个月是红色或黄色，还不能闭店。", colors: [] };
+    const closed = isClosed(store);
+    if (!closed && !report.allowed) return;
+    const lane = laneView(laneStep(data, store.id, period), !closed && laneUnfinished(data, store.id, period));
+    const cells = (lane.cells || []).map((cell) => (closed ? {
+      n: cell.n,
+      reached: false,
+      now: false,
+      color: "#8d8680",
+      fg: "#8d8680",
+      bg: "transparent",
+    } : cell));
+    cards.push({
+      id: store.id,
+      closed,
+      name: store.name,
+      tag: closed ? "失效-闭店" : `${store.region || ""} · ${store.city || ""}`,
+      meta: `${store.store_type || "精品店"} · ${store.mall_name || ""} · ${store.keep_decision || "待评估"}`,
+      address: store.address || "",
+      lane: { done: lane.done, alert: closed ? false : lane.alert, text: lane.text, cells },
+      reason: report.reason || "",
+      action: closed ? "恢复门店" : "闭店",
+      colors: (report.colors || []).map((item) => ({
+        key: `${item.year}-${item.month}`,
+        label: `${item.month}月${item.signal === "red" ? "红" : item.signal === "yellow" ? "黄" : "—"}`,
+        signal: item.signal || "",
+      })),
+    });
+  });
+  const closedCount = cards.filter((item) => item.closed).length;
+  return {
+    cards,
+    closedCount,
+    readyCount: cards.length - closedCount,
+    empty: cards.length === 0,
+  };
+}
+
 function roleOf(id) {
   return ROLES.find((item) => item.id === id) || ROLES[0];
 }
@@ -534,6 +594,9 @@ function roleOf(id) {
 module.exports = {
   ROLES,
   PAGES,
+  pagesFor,
+  isClosed,
+  closeModel,
   DECISIONS,
   RENT_MODELS,
   RENT_MATRIX,

@@ -18,6 +18,8 @@ import {
   reconcile,
   resolveRecon,
   saveActivity,
+  closeStore,
+  reopenStore,
   setDecision,
   snapshot,
   importContract,
@@ -140,6 +142,14 @@ app.post("/api/stores/:id/decision", wrap(async (req) => setDecision({
   storeId: req.params.id,
   keepDecision: req.body.keepDecision,
   actionPlan: req.body.actionPlan,
+})));
+app.post("/api/stores/:id/close", wrap(async (req) => closeStore({
+  ...actor(req),
+  storeId: req.params.id,
+})));
+app.post("/api/stores/:id/reopen", wrap(async (req) => reopenStore({
+  ...actor(req),
+  storeId: req.params.id,
 })));
 
 attachFrontDoor(app, { distDir: path.resolve(__dirname, "../client/dist") });

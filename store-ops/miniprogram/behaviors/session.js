@@ -9,7 +9,7 @@ module.exports = Behavior({
     headline: "",
     chips: [],
     roles: view.ROLES,
-    pages: view.PAGES,
+        pages: view.pagesFor(app.globalData.role),
     role: "expansion",
     photoUrl: "",
     photoName: "",

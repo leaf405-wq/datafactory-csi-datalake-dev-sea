@@ -1,4 +1,5 @@
 import { calculateMonthlyRent, inRentFreePeriod } from "./rentEngine.js";
+import { isClosed } from "./closure.js";
 
 export const ASSUMED_MARGIN = 0.55;
 export const AS_OF = { year: 2026, month: 3, day: 20, daysInMonth: 31 };
@@ -434,7 +435,7 @@ export function assignBoards(ranking) {
 export function buildDesk(snapshot) {
   const period = snapshot.period || { year: AS_OF.year, month: AS_OF.month };
   const timeProgress = AS_OF.day / AS_OF.daysInMonth;
-  const monitor = (snapshot.stores || []).map((store) => {
+  const monitor = (snapshot.stores || []).filter((store) => !isClosed(store)).map((store) => {
     const money = economicsOf(snapshot, store);
     const base = {
       storeId: store.id,

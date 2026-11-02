@@ -79,6 +79,27 @@ p { margin: 0; }
   min-width: 0; max-width: 100%;
 }
 .card h3 { font-size: 20px; margin-bottom: 6px; }
+.card.closed {
+  background: #eceae8;
+  border-color: #d9d4cf;
+  color: #8d8680;
+}
+.card.closed .tag,
+.card.closed .linkish,
+.card.closed h3,
+.card.closed .meta,
+.card.closed .lane-done,
+.card.closed .lane-alert {
+  color: #8d8680;
+  background: #e3dfdb;
+  border-color: #d0cbc6;
+}
+.card.closed .lane-steps span {
+  color: #8d8680 !important;
+  background: transparent !important;
+  border-color: #c8c3be !important;
+}
+.month-colors { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .meta { color: var(--muted); font-size: 13px; }
 .kpis { display: flex; gap: 18px; margin: 8px 0 18px; }
 .kpi strong { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }

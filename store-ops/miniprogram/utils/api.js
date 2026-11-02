@@ -67,6 +67,8 @@ module.exports = {
   resolve: (id, payload) => request("POST", `/api/stores/${id}/resolve`, payload),
   payment: (id, period) => request("POST", `/api/stores/${id}/payment`, period || {}),
   decision: (id, payload) => request("POST", `/api/stores/${id}/decision`, payload),
+  close: (id) => request("POST", `/api/stores/${id}/close`, {}),
+  reopen: (id) => request("POST", `/api/stores/${id}/reopen`, {}),
   previewRent: (payload) => request("POST", "/api/rent/preview", payload),
   forecast: (payload) => request("POST", "/api/forecast", payload),
   desk: (period) => request("GET", period ? `/api/prd/desk?year=${period.year}&month=${period.month}` : "/api/prd/desk"),

@@ -36,6 +36,8 @@ export function createApi(role, actor) {
     resolve: (id, payload) => send(`/api/stores/${id}/resolve`, { method: "POST", body: JSON.stringify(payload) }),
     payment: (id, period) => send(`/api/stores/${id}/payment`, { method: "POST", body: JSON.stringify(period || {}) }),
     decision: (id, payload) => send(`/api/stores/${id}/decision`, { method: "POST", body: JSON.stringify(payload) }),
+    closeStore: (id) => send(`/api/stores/${id}/close`, { method: "POST", body: "{}" }),
+    reopenStore: (id) => send(`/api/stores/${id}/reopen`, { method: "POST", body: "{}" }),
     previewRent: (payload) => send("/api/rent/preview", { method: "POST", body: JSON.stringify(payload) }),
     forecast: (payload) => send("/api/forecast", { method: "POST", body: JSON.stringify(payload) }),
     desk: (period) => send(period ? `/api/prd/desk?year=${period.year}&month=${period.month}` : "/api/prd/desk"),
