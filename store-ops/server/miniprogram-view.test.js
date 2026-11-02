@@ -305,6 +305,13 @@ test("小程序页面文件能通过语法检查，并且每页都有 wxml", () 
     const wxml = readFileSync(path.join(root, `${page}.wxml`), "utf8");
     assert.match(wxml, /bindtap="onRetry"/);
   }
+  const monitor = readFileSync(path.join(root, "pages/monitor/monitor.wxml"), "utf8");
+  assert.match(monitor, /class="tag severe"/);
+  assert.match(monitor, /class="tag green"/);
+  assert.doesNotMatch(monitor, /class="tag green">\{\{item\.cells\[1\]\}\}/);
+  const chrome = readFileSync(path.join(root, "components/chrome/chrome.wxss"), "utf8");
+  assert.match(chrome, /\.nav \.chip \{[^}]*font-weight: 700;[^}]*color: #1a56c4;/s);
+  assert.match(chrome, /\.nav \.chip\.on \{[^}]*color: #ffffff;/s);
 });
 
 test("接口地址先用保存的，再用本机，局域网地址排在后面", () => {
