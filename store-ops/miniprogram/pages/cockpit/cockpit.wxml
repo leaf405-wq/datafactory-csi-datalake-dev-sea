@@ -2,7 +2,7 @@
   <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" query="{{query}}" show-filter="{{true}}" show-months="{{true}}" count-text="{{countText}}" filter-placeholder="按区域、城市、店名、商场、电话筛选" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:month="onMonth" bind:query="onQuery" bind:base="onBase" />
   <view class="h2">5.8 多维报表与管理驾驶舱</view>
   <view class="lede">给区域经理、财务、营运总监、拓展和高管看同一套账期的数。区域和城市合在一列，利润按销售额加权。页面默认停在上月。</view>
-  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
   <view class="h2">区域 / 城市</view>
   <view class="meta">平均加权利润 = Σ(店铺净利润 × 店铺销售额) / Σ销售额。加权净利润 = Σ店铺净利润。毛利仍按销售额的 55% 估算。</view>
   <view class="kpis">

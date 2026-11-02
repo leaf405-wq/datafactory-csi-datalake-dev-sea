@@ -8,7 +8,7 @@
     <text class="{{draft ? 'done' : ''}}">提取关键字</text>
     <text class="{{draft ? '' : ''}}">人工确认</text>
   </view>
-  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
   <view class="panel">
     <view class="row">
       <button class="btn" disabled="{{!canWrite || busy}}" bindtap="chooseFile">导入合同</button>

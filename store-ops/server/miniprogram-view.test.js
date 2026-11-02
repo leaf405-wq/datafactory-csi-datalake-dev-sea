@@ -255,9 +255,30 @@ test("小程序页面文件能通过语法检查，并且每页都有 wxml", () 
   }
   const project = JSON.parse(readFileSync(path.join(root, "project.config.json"), "utf8"));
   assert.equal(project.setting.urlCheck, false);
+  assert.equal(project.setting.useApiHostProcess, false);
   assert.equal(project.appid, "touristappid");
   assert.equal(project.projectname, "maxmara-store-ops");
+  const privateConfig = JSON.parse(readFileSync(path.join(root, "project.private.config.json"), "utf8"));
+  assert.equal(privateConfig.setting.urlCheck, false);
+  assert.equal(privateConfig.setting.useApiHostProcess, false);
   const rootProject = JSON.parse(readFileSync(path.resolve(root, "../project.config.json"), "utf8"));
   assert.equal(rootProject.miniprogramRoot, "miniprogram/");
   assert.equal(rootProject.setting.urlCheck, false);
+  assert.equal(rootProject.setting.useApiHostProcess, false);
+  for (const page of app.pages) {
+    const wxml = readFileSync(path.join(root, `${page}.wxml`), "utf8");
+    assert.match(wxml, /bindtap="onRetry"/);
+  }
+});
+
+test("接口地址先用保存的，再用本机，局域网地址排在后面", () => {
+  const endpoints = loadCjs(path.join(root, "utils/endpoints.js"));
+  assert.deepEqual(
+    endpoints.candidateBases("http://10.1.1.1:3780/", ["http://127.0.0.1:3780", "http://localhost:3780", "http://10.0.0.8:3780"]),
+    ["http://10.1.1.1:3780", "http://127.0.0.1:3780", "http://localhost:3780", "http://10.0.0.8:3780"],
+  );
+  assert.deepEqual(
+    endpoints.candidateBases("http://127.0.0.1:3780", endpoints.bases),
+    ["http://127.0.0.1:3780", "http://localhost:3780"],
+  );
 });

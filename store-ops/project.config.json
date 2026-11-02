@@ -7,6 +7,7 @@
   "libVersion": "3.4.0",
   "setting": {
     "urlCheck": false,
+    "useApiHostProcess": false,
     "es6": true,
     "enhance": true,
     "postcss": true,

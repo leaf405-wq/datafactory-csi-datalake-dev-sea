@@ -52,7 +52,7 @@ store-ops/data/storeops.accdb
 
 `miniprogram/` 是同一套经营功能的微信小程序。页面包括经营首页、新签合同、店览宽表、13 步泳道、租金引擎、盈利预测、每日预警和管理驾驶舱。读写仍走本机 `http://127.0.0.1:3780`，数据还是 `data/storeops.accdb`。手机开发者工具不直接打开 Access。
 
-先在 `store-ops` 目录执行 `npm run dev`，再执行 `npm run wechat`。这条命令把小程序拷进 `~/WeChatProjects/maxmara-store-ops`。本地预览用测试号，详情里勾选不校验合法域名。长按标题可以改接口地址，默认是 `http://127.0.0.1:3780`。
+先在 `store-ops` 目录执行 `npm run dev`，再执行 `npm run wechat`。这条命令把小程序拷进 `~/WeChatProjects/maxmara-store-ops`，并把这台电脑的局域网地址写进那份拷贝。本地预览用测试号，详情里勾选不校验合法域名。开发服务监听 `0.0.0.0:3780`，浏览器仍用 `http://127.0.0.1:3780/`。开发者工具连不上 `127.0.0.1` 时，会再试 `localhost` 和局域网地址。红字可以点一下重试。长按标题可以改接口地址。改完监听方式后要重新运行 `npm run dev`。这是本机演示，不要把 3780 暴露到公网。
 
 发布到微信、以后在微信里更新，用正式 AppID，不能用测试号：
 

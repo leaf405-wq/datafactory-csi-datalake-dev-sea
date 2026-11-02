@@ -44,7 +44,7 @@ button::after { border: none; }
   padding: 14rpx 16rpx;
 }
 .area { min-height: 180rpx; width: 100%; }
-.err { color: #9d2c2c; margin: 12rpx 0; }
+.err { color: #9d2c2c; margin: 12rpx 0; text-decoration: underline; }
 .tag { display: inline-block; border-radius: 999rpx; padding: 2rpx 12rpx; font-size: 22rpx; background: #f3e4d8; }
 .tag.red { background: #f8e4e4; color: #9d2c2c; }
 .tag.green { background: #e5f2eb; color: #1d6b45; }

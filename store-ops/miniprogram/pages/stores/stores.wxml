@@ -2,7 +2,7 @@
   <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" query="{{query}}" show-filter="{{true}}" show-months="{{true}}" count-text="{{countText}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:month="onMonth" bind:query="onQuery" bind:base="onBase" />
   <view class="h2">店览</view>
   <view class="lede">52 家原有店加 2026 年 11 月新签的上海后滩太古里店。11 月之前的月份是 52 / 53 家。附件里写了店名、地址、电话和旗舰类型的，按附件写入；其余地址和电话来自品牌门店名录。</view>
-  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
   <view wx:if="{{loading}}" class="meta">正在打开 Access 数据库</view>
   <scroll-view scroll-x class="panel">
     <view class="table">

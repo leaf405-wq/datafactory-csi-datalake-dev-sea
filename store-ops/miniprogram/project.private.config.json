@@ -2,6 +2,7 @@
   "projectname": "maxmara-store-ops",
   "setting": {
     "urlCheck": false,
+    "useApiHostProcess": false,
     "compileHotReLoad": true,
     "coverView": true,
     "skylineRenderEnable": false,

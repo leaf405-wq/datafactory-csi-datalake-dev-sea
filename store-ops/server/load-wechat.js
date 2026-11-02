@@ -5,12 +5,35 @@ import { homedir } from "node:os";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { lanHosts } from "./loopback.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = path.join(root, "miniprogram");
 const SETTINGS_KEY = "reduxPersist:settings";
 const SETTINGS_HASH = createHash("md5").update(SETTINGS_KEY).digest("hex");
 const DEFAULT_PORT = 21992;
+
+export function withLanBases(source, lan) {
+  const extras = [];
+  for (const url of lan) {
+    if (source.includes(JSON.stringify(url)) || extras.includes(url)) continue;
+    extras.push(url);
+  }
+  if (!extras.length) return source;
+  const marker = `  "http://localhost:3780",\n`;
+  if (!source.includes(marker)) return source;
+  const insertion = extras.map((url) => `  ${JSON.stringify(url)},`).join("\n");
+  return source.replace(marker, `${marker}${insertion}\n`);
+}
+
+export function stampLanEndpoints(dir, lan = lanHosts().map((host) => `http://${host}:3780`)) {
+  const file = path.join(dir, "utils", "endpoints.js");
+  if (!existsSync(file)) return false;
+  const current = readFileSync(file, "utf8");
+  const next = withLanBases(current, lan);
+  if (next !== current) writeFileSync(file, next);
+  return next !== current;
+}
 
 export function installMiniProgram(dest = path.join(homedir(), "WeChatProjects", "maxmara-store-ops")) {
   mkdirSync(path.dirname(dest), { recursive: true });
@@ -57,12 +80,25 @@ export function pointWechatAtMiniProgram(home = homedir()) {
       setting: {
         ...(current.setting || {}),
         urlCheck: false,
+        useApiHostProcess: false,
         es6: true,
         enhance: true,
         postcss: true,
         minified: false,
       },
     });
+    const privatePath = path.join(dir, "project.private.config.json");
+    if (existsSync(privatePath)) {
+      const priv = readJson(privatePath);
+      writeJson(privatePath, {
+        ...priv,
+        setting: {
+          ...(priv.setting || {}),
+          urlCheck: false,
+          useApiHostProcess: false,
+        },
+      });
+    }
     pointed.push(dir);
   }
   return pointed;
@@ -223,7 +259,13 @@ function cliPath() {
 async function main() {
   const dest = installMiniProgram();
   const parents = pointWechatAtMiniProgram();
+  stampLanEndpoints(dest);
+  for (const parent of parents) stampLanEndpoints(path.join(parent, "maxmara-store-ops"));
   const openPath = parents[0] || dest;
+  const lan = lanHosts();
+  if (lan.length) {
+    console.log(`开发者工具若连不上 127.0.0.1，会改试 ${lan.map((host) => `http://${host}:3780`).join("、")}。请先重新运行 npm run dev。`);
+  }
   console.log(`已放入微信开发者工具默认目录 ${dest}`);
   if (parents.length) {
     console.log(`外层项目 ${openPath} 原先编译的是自带的 Weixin 示例。已把小程序根目录改到里面的 maxmara-store-ops。`);

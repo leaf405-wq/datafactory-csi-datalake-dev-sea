@@ -2,7 +2,7 @@
   <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" show-filter="{{false}}" show-months="{{false}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:base="onBase" />
   <view class="h2">5.3 租金与提点计算引擎</view>
   <view class="lede">四种商场租金模型用同一套月结引擎试算。下面这个计算器只加附加物业费，不含增值税、推广费和水电费。月结泳道仍按合同计税。试算不写入 Access。</view>
-  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
   <view class="panel">
     <view class="tr"><text class="th td">模型</text><text class="th td col-store">计算公式</text><text class="th td">应用场景</text></view>
     <view class="tr" wx:for="{{matrix}}" wx:key="id">

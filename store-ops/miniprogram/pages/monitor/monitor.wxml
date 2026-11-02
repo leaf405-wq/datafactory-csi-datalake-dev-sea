@@ -2,7 +2,7 @@
   <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" query="{{query}}" show-filter="{{true}}" show-months="{{true}}" count-text="{{countText}}" filter-placeholder="按区域、城市、店名、商场、电话筛选" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:month="onMonth" bind:query="onQuery" bind:base="onBase" />
   <view class="h2">5.6 营业中店铺每日监控与预警</view>
   <view class="lede">观察日定在 2026-03-20，时间进度按 20/31。销售用的是所选月份的月结数，不是当日流水。页面默认停在上月。预警标签用绿色。</view>
-  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
   <view class="meta">{{marginNote}}</view>
   <view class="meta">{{brdNote}}</view>
   <view class="meta">{{historyNote}}</view>

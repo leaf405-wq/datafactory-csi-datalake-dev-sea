@@ -71,6 +71,9 @@ module.exports = Behavior({
       const ctx = this.shell(snap);
       if (typeof this.paint === "function") await this.paint(snap, ctx);
     },
+    onRetry() {
+      this.boot(true);
+    },
     onRole(event) {
       getApp().setRole(event.detail.id);
       this.boot(false);

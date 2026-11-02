@@ -2,7 +2,7 @@
   <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" show-filter="{{false}}" show-months="{{false}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:base="onBase" />
   <view class="h2">5.4 新开店铺盈利能力预测</view>
   <view class="lede">立项时填预估日销、客单价、毛利率、租金模型和投入。系统按月结引擎算租金，再给出月度损益、静态回收期、盈亏平衡日销和年化 IRR。销售额下降 10%、20% 会各算一次。不写入 Access。</view>
-  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
   <view class="panel">
     <view wx:for="{{fields}}" wx:key="key" class="field">
       <text class="lab">{{item.label}}（{{item.unit}}）</text>

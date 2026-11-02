@@ -1,6 +1,6 @@
 <view class="pad">
   <chrome active="home" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" show-filter="{{false}}" show-months="{{false}}" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:base="onBase" />
-  <view wx:if="{{error}}" class="err">{{error}}</view>
+  <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
   <view wx:if="{{loading}}" class="meta">正在打开 Access 数据库</view>
   <view wx:if="{{missing}}" class="lede">请从首页选择一家店。</view>
   <block wx:else>

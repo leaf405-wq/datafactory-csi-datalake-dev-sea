@@ -1,7 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { listenHttp } from "./loopback.js";
+import { lanHosts, listenHttp } from "./loopback.js";
 import { all, startAccess, stopAccess } from "./access.js";
 import { SAMPLE_CONTRACT } from "./parser.js";
 import { seedIfEmpty } from "./seed.js";
@@ -159,6 +159,8 @@ console.log(`opening lane ${opening.year}-${opening.month} added ${opening.added
 console.log(`ready lanes parked ${ready.parked} applied ${ready.applied}`);
 const servers = await listenHttp(app, port);
 console.log(`store-ops http://127.0.0.1:${port}`);
+const lan = lanHosts();
+if (lan.length) console.log(`局域网 ${lan.map((host) => `http://${host}:${port}`).join(" ")}`);
 
 async function shutdown() {
   await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))));
