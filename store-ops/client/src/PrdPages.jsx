@@ -365,7 +365,7 @@ export function MonitorPage({ api, period, months, accounting, calendar, onPerio
     <section id="page-monitor">
       <h2>5.6 营业中店铺每日监控与预警</h2>
       <p className="lede">
-        观察日定在 2026-03-20，时间进度按 20/31。销售用的是所选月份的月结数，不是当日流水。DW 日数据还没有接进来。页面默认停在上月。预警标签用绿色。
+        观察日定在 2026-03-20，时间进度按 20/31。销售用的是所选月份的月结数，不是当日流水。DW 日数据还没有接进来。页面默认停在上月。严重是红，警告是橙，关注是黄，正常是绿。
       </p>
       {error ? <div className="error">{error}</div> : null}
       {!desk ? <p><WaitingCopy text="正在读取店铺" active /></p> : (
@@ -392,7 +392,7 @@ export function MonitorPage({ api, period, months, accounting, calendar, onPerio
                 {ALERT_MATRIX.map((row) => (
                   <tr key={row[0]}>
                     <td>{row[0]}</td>
-                    <td><Level level="green">{row[1]}</Level></td>
+                    <td><Level level="red">{row[1]}</Level></td>
                     <td><Level level="orange">{row[2]}</Level></td>
                     <td><Level level="yellow">{row[3]}</Level></td>
                   </tr>
@@ -420,9 +420,9 @@ export function MonitorPage({ api, period, months, accounting, calendar, onPerio
                     <td>
                       {row.alerts?.length ? row.alerts.map((alert) => (
                         <span key={alert.message} style={{ display: "block", marginBottom: 4 }}>
-                          <Level level={alert.level === "red" ? "green" : alert.level}>{alert.dimension}</Level> {alert.message}
+                          <Level level={alert.level}>{alert.dimension}</Level> {alert.message}
                         </span>
-                      )) : <Level>正常</Level>}
+                      )) : <Level level="green">正常</Level>}
                       {row.notes?.map((note) => <span key={note} className="meta" style={{ display: "block" }}>{note}</span>)}
                     </td>
                   </tr>

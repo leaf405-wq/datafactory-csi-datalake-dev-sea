@@ -170,7 +170,7 @@ test("泳道页用商场名，不覆盖账单表单字段", () => {
   assert.match(finished.hint, /2026年4月/);
 });
 
-test("每日预警把红色严重标签改成绿色，驾驶舱排行和闭店跟着在营店走", () => {
+test("每日预警严重为红、正常为绿，驾驶舱排行和闭店跟着在营店走", () => {
   const desk = {
     marginNote: "毛利按 55%",
     brdNote: "月结仍用 BRD",
@@ -220,7 +220,11 @@ test("每日预警把红色严重标签改成绿色，驾驶舱排行和闭店�
   const october = { year: 2026, month: 10 };
   const monitor = view.monitorModel(desk, october, "");
   assert.equal(monitor.rows.length, 1);
-  assert.equal(monitor.rows[0].alerts[0].level, "green");
+  assert.equal(monitor.rows[0].alerts[0].level, "red");
+  const quiet = view.monitorModel({
+    monitor: [{ ...desk.monitor[0], storeId: "st-quiet", alerts: [] }],
+  }, october, "");
+  assert.equal(quiet.rows[0].quiet, true);
   const cockpit = view.cockpitModel(desk, october, "");
   assert.deepEqual(cockpit.ranking.map((row) => row.storeId), ["st-sanya"]);
   assert.equal(cockpit.ranking[0].boardClass, "red");

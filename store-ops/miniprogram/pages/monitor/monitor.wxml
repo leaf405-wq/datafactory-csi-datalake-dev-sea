@@ -1,7 +1,7 @@
 <view class="pad">
   <chrome active="{{active}}" headline="{{headline}}" roles="{{roles}}" pages="{{pages}}" chips="{{chips}}" query="{{query}}" show-filter="{{true}}" show-months="{{true}}" count-text="{{countText}}" filter-placeholder="按区域、城市、店名、商场、电话筛选" photo-url="{{photoUrl}}" photo-name="{{photoName}}" photo-meta="{{photoMeta}}" bind:role="onRole" bind:nav="onNav" bind:month="onMonth" bind:query="onQuery" bind:base="onBase" />
   <view class="h2">5.6 营业中店铺每日监控与预警</view>
-  <view class="lede">观察日定在 2026-03-20，时间进度按 20/31。销售用的是所选月份的月结数，不是当日流水。页面默认停在上月。预警标签用绿色。</view>
+  <view class="lede">观察日定在 2026-03-20，时间进度按 20/31。销售用的是所选月份的月结数，不是当日流水。页面默认停在上月。严重是红，警告是橙，关注是黄，正常是绿。</view>
   <view wx:if="{{error}}" class="err" bindtap="onRetry">{{error}}</view>
   <view class="meta">{{marginNote}}</view>
   <view class="meta">{{brdNote}}</view>
@@ -10,7 +10,7 @@
     <view class="tr"><text class="th td">预警维度</text><text class="th td">红色（严重）</text><text class="th td">橙色（警告）</text><text class="th td">黄色（关注）</text></view>
     <view class="tr" wx:for="{{matrix}}" wx:key="id">
       <text class="td">{{item.cells[0]}}</text>
-      <text class="td"><text class="tag green">{{item.cells[1]}}</text></text>
+      <text class="td"><text class="tag red">{{item.cells[1]}}</text></text>
       <text class="td"><text class="tag orange">{{item.cells[2]}}</text></text>
       <text class="td"><text class="tag yellow">{{item.cells[3]}}</text></text>
     </view>
