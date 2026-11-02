@@ -52,7 +52,16 @@ store-ops/data/storeops.accdb
 
 `miniprogram/` 是同一套经营功能的微信小程序。页面包括经营首页、新签合同、店览宽表、13 步泳道、租金引擎、盈利预测、每日预警和管理驾驶舱。读写仍走本机 `http://127.0.0.1:3780`，数据还是 `data/storeops.accdb`。手机开发者工具不直接打开 Access。
 
-先在 `store-ops` 目录执行 `npm run dev`，再执行 `npm run wechat`。这条命令把小程序拷进微信开发者工具的默认目录 `~/WeChatProjects/maxmara-store-ops`，并在本机有工具时直接打开。也可以在工具里选「导入项目」，目录选 `store-ops/miniprogram` 或刚才那个 WeChatProjects 目录。AppID 选测试号。详情里勾选「不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书」。长按标题可以改接口地址，默认是 `http://127.0.0.1:3780`。接口只监听本机回环地址，真机预览需要把服务改到手机能访问的地址。
+先在 `store-ops` 目录执行 `npm run dev`，再执行 `npm run wechat`。这条命令把小程序拷进 `~/WeChatProjects/maxmara-store-ops`。本地预览用测试号，详情里勾选不校验合法域名。长按标题可以改接口地址，默认是 `http://127.0.0.1:3780`。
+
+发布到微信、以后在微信里更新，用正式 AppID，不能用测试号：
+
+1. 管理员微信打开 https://mp.weixin.qq.com 注册小程序，复制 AppID。
+2. 在 `store-ops` 执行 `WECHAT_APPID=wx你的AppID npm run wechat:upload`。开发者工具要先用这个小程序的管理员或开发者扫码登录，设置里的服务端口要开着。
+3. 打开 https://mp.weixin.qq.com → 管理 → 版本管理，把刚上传的开发版本提交审核，通过后点发布。
+4. 下次改完再执行 `npm run wechat:upload`，然后仍在版本管理里提交并发布。用户在微信里打开时会提示重启更新。
+
+手机访问不到 `127.0.0.1`。线上要用已备案的 https 接口域名，填进公众平台的 request 合法域名，并在小程序里长按标题改成这个地址。数据仍是同一套接口背后的 Access 库。
 
 右上角切换拓展部、营运部、财务部、高管。每一步只接受泳道上的那个部门。
 

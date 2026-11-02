@@ -14,6 +14,7 @@ App({
     if (saved) this.globalData.baseUrl = String(saved).replace(/\/$/, "");
     const role = wx.getStorageSync("role");
     if (role) this.setRole(role);
+    watchWechatUpdate();
   },
   setRole(id) {
     const found = view.roleOf(id);
@@ -41,3 +42,18 @@ App({
     return snap;
   },
 });
+
+function watchWechatUpdate() {
+  if (!wx.getUpdateManager) return;
+  const update = wx.getUpdateManager();
+  update.onUpdateReady(() => {
+    wx.showModal({
+      title: "发现新版本",
+      content: "新版本已经准备好，重启后使用。",
+      confirmText: "重启",
+      success(res) {
+        if (res.confirm) update.applyUpdate();
+      },
+    });
+  });
+}
