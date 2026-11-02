@@ -13,6 +13,42 @@ const SETTINGS_KEY = "reduxPersist:settings";
 const SETTINGS_HASH = createHash("md5").update(SETTINGS_KEY).digest("hex");
 const DEFAULT_PORT = 21992;
 
+export function canUpload(appid) {
+  return typeof appid === "string" && /^wx[0-9a-zA-Z]{16}$/.test(appid);
+}
+
+// 正式 AppID 只认 WECHAT_APPID，或项目里已经写好的 wx 加 16 位。私人配置能盖过 project.config.json，但无效示例号不能盖过。其余写成测试号，并且不要调 cli open。
+export function decideWechatOpen({
+  dest = "",
+  parents = [],
+  envAppId = "",
+  privateAppId = "",
+  projectAppId = "",
+} = {}) {
+  const appid = [envAppId, privateAppId, projectAppId].find((id) => canUpload(id)) || "touristappid";
+  const parent = parents[0] || "";
+  const nested = parent ? path.join(parent, "maxmara-store-ops") : "";
+  return {
+    openPath: nested || dest,
+    appid,
+    cliOpen: canUpload(appid),
+  };
+}
+
+export function touristOpenMessage() {
+  return "开发者工具打不开测试号以外的空 AppID；请在工具里打开该目录，AppID 选「测试号」；正式发布再设 WECHAT_APPID=wx... 然后 npm run wechat。";
+}
+
+export function cliRejectedMissingAppId(status, output = "") {
+  return Number(status) === 10 || String(output).includes("不存在此 AppID");
+}
+
+function preferRealAppId(primary, fallback = "") {
+  if (canUpload(primary)) return primary;
+  if (canUpload(fallback)) return fallback;
+  return typeof primary === "string" ? primary : (typeof fallback === "string" ? fallback : "");
+}
+
 export function withLanBases(source, lan) {
   const extras = [];
   for (const url of lan) {
@@ -57,7 +93,7 @@ function childDirs(dir) {
   return found;
 }
 
-export function pointWechatAtMiniProgram(home = homedir()) {
+export function pointWechatAtMiniProgram(home = homedir(), envAppId = "") {
   const projects = path.join(home, "WeChatProjects");
   const parents = [projects, ...childDirs(projects).flatMap((dir) => [dir, ...childDirs(dir)])];
   const pointed = [];
@@ -69,36 +105,17 @@ export function pointWechatAtMiniProgram(home = homedir()) {
     rmSync(nested, { recursive: true, force: true });
     cpSync(source, nested, { recursive: true });
     const current = readJson(configPath);
-    const appid = typeof current.appid === "string" && current.appid.startsWith("wx")
-      ? current.appid
-      : (current.appid || "touristappid");
-    writeJson(configPath, {
-      ...current,
-      miniprogramRoot: "maxmara-store-ops/",
-      appid,
-      compileType: "miniprogram",
-      setting: {
-        ...(current.setting || {}),
-        urlCheck: false,
-        useApiHostProcess: false,
-        es6: true,
-        enhance: true,
-        postcss: true,
-        minified: false,
-      },
+    const priv = readJson(path.join(dir, "project.private.config.json"));
+    const copied = readAppIds(nested);
+    const decision = decideWechatOpen({
+      dest: nested,
+      parents: [dir],
+      envAppId,
+      privateAppId: preferRealAppId(priv.appid, copied.privateAppId),
+      projectAppId: preferRealAppId(current.appid, copied.projectAppId),
     });
-    const privatePath = path.join(dir, "project.private.config.json");
-    if (existsSync(privatePath)) {
-      const priv = readJson(privatePath);
-      writeJson(privatePath, {
-        ...priv,
-        setting: {
-          ...(priv.setting || {}),
-          urlCheck: false,
-          useApiHostProcess: false,
-        },
-      });
-    }
+    writePreviewAppId(dir, decision.appid, { nest: true });
+    writePreviewAppId(nested, decision.appid);
     pointed.push(dir);
   }
   return pointed;
@@ -116,6 +133,52 @@ function readJson(file) {
 function writeJson(file, value) {
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function readAppIds(dir) {
+  const project = readJson(path.join(dir, "project.config.json"));
+  const priv = readJson(path.join(dir, "project.private.config.json"));
+  return {
+    projectAppId: typeof project.appid === "string" ? project.appid : "",
+    privateAppId: typeof priv.appid === "string" ? priv.appid : "",
+  };
+}
+
+function writePreviewAppId(dir, appid, { nest = false } = {}) {
+  const configPath = path.join(dir, "project.config.json");
+  if (!existsSync(configPath)) return;
+  const current = readJson(configPath);
+  const next = {
+    ...current,
+    appid,
+    setting: {
+      ...(current.setting || {}),
+      urlCheck: false,
+      useApiHostProcess: false,
+    },
+  };
+  if (nest) {
+    next.miniprogramRoot = "maxmara-store-ops/";
+    next.compileType = "miniprogram";
+    next.setting.es6 = true;
+    next.setting.enhance = true;
+    next.setting.postcss = true;
+    next.setting.minified = false;
+  }
+  writeJson(configPath, next);
+  const privatePath = path.join(dir, "project.private.config.json");
+  if (!existsSync(privatePath)) return;
+  const priv = readJson(privatePath);
+  const nextPriv = {
+    ...priv,
+    setting: {
+      ...(priv.setting || {}),
+      urlCheck: false,
+      useApiHostProcess: false,
+    },
+  };
+  if (Object.prototype.hasOwnProperty.call(priv, "appid")) nextPriv.appid = appid;
+  writeJson(privatePath, nextPriv);
 }
 
 function wechatBaseDirs(home = homedir()) {
@@ -239,10 +302,11 @@ async function waitForPort(port) {
   return false;
 }
 
-function launchWechat() {
+function launchWechat(projectPath = "") {
   if (process.platform !== "darwin") return;
+  const target = projectPath ? [projectPath] : [];
   for (const app of ["wechatwebdevtools", "微信开发者工具"]) {
-    const opened = spawnSync("open", ["-a", app], { stdio: "ignore" });
+    const opened = spawnSync("open", ["-a", app, ...target], { stdio: "ignore" });
     if (opened.status === 0) return;
   }
 }
@@ -257,35 +321,64 @@ function cliPath() {
 }
 
 async function main() {
+  const envAppId = process.env.WECHAT_APPID || "";
   const dest = installMiniProgram();
-  const parents = pointWechatAtMiniProgram();
+  const parents = pointWechatAtMiniProgram(homedir(), envAppId);
   stampLanEndpoints(dest);
   for (const parent of parents) stampLanEndpoints(path.join(parent, "maxmara-store-ops"));
-  const openPath = parents[0] || dest;
+  const parent = parents[0] || "";
+  const inner = parent ? path.join(parent, "maxmara-store-ops") : dest;
+  const innerIds = readAppIds(inner);
+  const outerIds = parent ? readAppIds(parent) : { projectAppId: "", privateAppId: "" };
+  const plan = decideWechatOpen({
+    dest,
+    parents,
+    envAppId,
+    privateAppId: preferRealAppId(outerIds.privateAppId, innerIds.privateAppId),
+    projectAppId: preferRealAppId(outerIds.projectAppId, innerIds.projectAppId),
+  });
+  writePreviewAppId(plan.openPath, plan.appid);
+  if (path.resolve(plan.openPath) !== path.resolve(dest)) writePreviewAppId(dest, plan.appid);
   const lan = lanHosts();
   if (lan.length) {
     console.log(`开发者工具若连不上 127.0.0.1，会改试 ${lan.map((host) => `http://${host}:3780`).join("、")}。请先重新运行 npm run dev。`);
   }
   console.log(`已放入微信开发者工具默认目录 ${dest}`);
   if (parents.length) {
-    console.log(`外层项目 ${openPath} 原先编译的是自带的 Weixin 示例。已把小程序根目录改到里面的 maxmara-store-ops。`);
+    console.log(`外层项目 ${parent} 原先编译的是自带的 Weixin 示例。已把小程序根目录改到里面的 maxmara-store-ops。`);
     console.log("重新编译后，标题应是 MaxMara经营系统。");
   }
   quitWechat();
   const updated = enableWechatServicePort();
-  trustWechatProject(openPath);
+  trustWechatProject(plan.openPath);
+  if (parent && path.resolve(parent) !== path.resolve(plan.openPath)) trustWechatProject(parent);
   if (updated) console.log("已打开微信开发者工具的服务端口。");
+  if (!plan.cliOpen) {
+    launchWechat(plan.openPath);
+    console.log(touristOpenMessage());
+    return;
+  }
   launchWechat();
   const cli = cliPath();
   if (!cli) {
-    console.log("在微信开发者工具里选「导入项目」，目录用上面这一行。AppID 选测试号，详情里勾选不校验合法域名。");
+    console.log(`在微信开发者工具里选「导入项目」，目录是 ${plan.openPath}。详情里勾选不校验合法域名。`);
     return;
   }
   const port = servicePort();
   if (updated) await waitForPort(port);
-  const opened = spawnSync(cli, ["open", "--project", openPath, "--lang", "zh", "--port", String(port)], { input: "y\n", stdio: ["pipe", "inherit", "inherit"] });
+  const opened = spawnSync(cli, ["open", "--project", plan.openPath, "--lang", "zh", "--port", String(port)], {
+    input: "y\n",
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  const output = `${opened.stdout || ""}${opened.stderr || ""}`;
+  if (cliRejectedMissingAppId(opened.status, output)) {
+    console.log(touristOpenMessage());
+    return;
+  }
+  if (output) process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
   if (opened.status) {
-    console.log(`命令行仍未能打开项目。请在微信开发者工具里导入 ${openPath}。`);
+    console.log(`命令行仍未能打开项目。请在微信开发者工具里导入 ${plan.openPath}。`);
     console.log("不要导入外层那个只显示 Weixin 的示例。AppID 选测试号，详情里勾选不校验合法域名。");
   }
 }

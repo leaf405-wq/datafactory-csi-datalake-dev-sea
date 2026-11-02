@@ -3,14 +3,12 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { installMiniProgram, pointWechatAtMiniProgram } from "./load-wechat.js";
+import { canUpload, installMiniProgram, pointWechatAtMiniProgram } from "./load-wechat.js";
+
+export { canUpload };
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceConfig = path.join(root, "miniprogram", "project.config.json");
-
-export function canUpload(appid) {
-  return typeof appid === "string" && /^wx[0-9a-zA-Z]{16}$/.test(appid);
-}
 
 export function versionStamp(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -63,7 +61,7 @@ function main() {
   const given = process.env.WECHAT_APPID || "";
   if (given) writeAppId(given);
   const dest = installMiniProgram();
-  const parents = pointWechatAtMiniProgram();
+  const parents = pointWechatAtMiniProgram(homedir(), given);
   const project = parents[0] || dest;
   const appid = readAppId(project);
   if (!canUpload(appid)) {
